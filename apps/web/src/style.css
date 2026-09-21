@@ -1,0 +1,6 @@
+body { font: 16px system-ui, sans-serif; margin: 2rem; color: #222; background: #fafafa; }
+main { max-width: 700px; margin: auto; }
+table { border-collapse: collapse; width: 100%; background: white; }
+th, td { padding: .5rem 1rem; border-bottom: 1px solid #ddd; text-align: left; }
+td { text-align: right; font-variant-numeric: tabular-nums; }
+.stale { color: #875300; background: #fff5d9; }

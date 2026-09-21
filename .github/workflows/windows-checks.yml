@@ -1,0 +1,33 @@
+name: Windows source checks (no runtime artifact)
+
+'on':
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Record scope of verification
+        shell: pwsh
+        run: |
+          @'
+          TypeScript build and synthetic transport checks only.
+          No SimConnect SDK installation, bridge compilation, runtime ZIP, or live MSFS verification.
+          Windows packaging is blocked as documented in docs/windows-deployment.md.
+          '@ >> $env:GITHUB_STEP_SUMMARY

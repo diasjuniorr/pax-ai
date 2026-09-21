@@ -1,0 +1,1 @@
+{"name":"@pax/server","private":true,"version":"0.1.0","type":"module","dependencies":{"@pax/shared":"*","@pax/telemetry":"*"}}
