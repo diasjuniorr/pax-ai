@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <AssemblyName>PaxAgent</AssemblyName>
     <TargetFramework>net48</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion>
@@ -19,5 +20,6 @@
   </ItemGroup>
   <Target Name="CheckSdk" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(SimConnectManagedDll)')" Text="Managed SimConnect SDK DLL not found. Set MSFS2024_SDK or SimConnectManagedDll. See README.md." />
+    <Error Condition="!Exists('$(SimConnectNativeDll)')" Text="Native SimConnect DLL not found. Set SimConnectNativeDll to the matching x64 SDK library." />
   </Target>
 </Project>

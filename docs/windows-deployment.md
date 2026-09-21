@@ -12,7 +12,7 @@ Retain the current thin native Windows process and `net48` target for now. Avoid
 
 [SimConnectBridge.csproj](../services/simconnect-bridge/SimConnectBridge.csproj) targets .NET Framework 4.8 (`net48`), x64, console executable, with `System.Windows.Forms` and `System.Web.Extensions`. The latter supplies `JavaScriptSerializer`. The message-loop approach follows the official managed-wrapper documentation, which specifies Framework 4.7 setup. Framework 4.8 was our compatible implementation choice, not an SDK mandate to install developer tools on end-user PCs. [Official managed setup](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/programming-simconnect-clients-using-managed-code/)
 
-The project references `Microsoft.FlightSimulator.SimConnect.dll` from the SDK and sets `Private=true`; it conditionally copies native `SimConnect.dll` if found. That copy instruction is neither redistribution permission nor evidence that the resulting executable runs on a clean machine. The current executable is named `SimConnectBridge.exe`, not `PaxAgent.exe`.
+The project references `Microsoft.FlightSimulator.SimConnect.dll` from the SDK and sets `Private=true`; it conditionally copies native `SimConnect.dll` if found. That copy instruction is neither redistribution permission nor evidence that the resulting executable runs on a clean machine. The executable is now named `PaxAgent.exe`; a missing native DLL fails the build.
 
 | Component | Build environment | Gaming target |
 |---|---|---|
@@ -50,7 +50,7 @@ An Asobo support response points to the official [SDK download manifest](https:/
 
 Added [windows-checks.yml](../.github/workflows/windows-checks.yml) for `npm ci`, build/typecheck and synthetic tests on a Windows runner. It deliberately produces **no agent artifact**, installs no SDK and does not claim C# validation. [GitHub Node CI documentation](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs)
 
-This workspace is not currently a Git repository and has no configured GitHub remote. No workflow has been dispatched, no Actions result exists, and account permissions/runner availability are unverified. A passing source-check job will not mean the packaging gate passed.
+Repository `diasjuniorr/pax-ai` is public and main is pushed. Windows TypeScript checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). The workflow now also compiles C# from pinned official SDK 1.7.3, administratively extracted without SDK installation, and invokes `--check-runtime`. Its artifact contains only PAX exe/config/manifest, not Microsoft DLLs, until redistribution is resolved. First C# run pending.
 
 Once SDK permissions and runtime closure are established, implement a separate packaging job: acquire pinned official build inputs; compile Release/x64; test startup without simulator and without SDK/GAC assumptions; stage an explicit allowlist; include version/commit/dependency hashes and required notices; publish `pax-windows-<version>.zip`. Hosted CI cannot substitute for a real flight acceptance test.
 
@@ -96,3 +96,7 @@ The [MSFS2024_AI project file](https://github.com/noscapect/MSFS2024_AI/blob/204
 **Recommended deployment direction:** retain PAX net48/x64 and implement the same app-local two-DLL packaging on a separate Windows builder. Make a missing native DLL a packaging error (PAX currently copies it only if present), add an explicit manifest/checksum and perform SDK-free smoke testing. The reference uses a local release script; it does not establish a working GitHub-hosted SDK acquisition workflow for us. Keep Node off the target through a configured protected connection to the development host.
 
 This narrows the earlier technical uncertainty: there is now concrete source and shipped-artifact precedent, so framework/C++ alternatives need no further broad study. The reference's releasing document labels the DLLs distributable but does not supply a Microsoft permission notice in the inspected packaging path. Obtain PAX build inputs from the official SDK, not the third-party ZIP; record the applicable SDK redistribution basis before distributing PAX. This remaining release check is distinct from deciding to retain C# and implementing build tooling. No PAX artifact or live result is claimed by this study.
+
+## Home acceptance connection — 2026-09-21
+
+The user confirmed Windows 11 Pro, build 26200.9457, and both computers on the same Wi-Fi. For initial acceptance use a Windows SSH local forward to the Mac loopback backend. This provides encrypted authenticated transport without modifying the existing endpoint or opening port 3001 to the LAN. Check `ssh -V` on Windows first. On Mac enable Remote Login for the specific account only; verify the host fingerprint, then use `ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L 127.0.0.1:3001:127.0.0.1:3001 <mac-user>@<mac-lan-ip>`. Keep the tunnel open during the test and close it afterwards. This is a temporary acceptance topology, not the final product deployment. Network and live simulator behavior remain unverified.

@@ -1,4 +1,4 @@
-name: Windows source checks (no runtime artifact)
+name: Windows checks and agent compilation
 
 'on':
   push:
@@ -23,11 +23,23 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+  agent:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Compile agent with pinned official SDK and check runtime loading
+        shell: pwsh
+        run: ./scripts/build-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pax-agent-compiled
+          path: ${{ runner.temp }}/pax-agent-compiled/
+          if-no-files-found: error
+          retention-days: 7
       - name: Record scope of verification
         shell: pwsh
         run: |
-          @'
-          TypeScript build and synthetic transport checks only.
-          No SimConnect SDK installation, bridge compilation, runtime ZIP, or live MSFS verification.
-          Windows packaging is blocked as documented in docs/windows-deployment.md.
-          '@ >> $env:GITHUB_STEP_SUMMARY
+          'C# compiled against official SDK 1.7.3; app-local runtime loading checked on the builder. No live MSFS connection tested. Artifact contains PAX executable/config/manifest only, pending SDK runtime redistribution check.' >> $env:GITHUB_STEP_SUMMARY

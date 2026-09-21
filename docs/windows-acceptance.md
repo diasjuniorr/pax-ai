@@ -8,7 +8,9 @@ The gaming laptop is **runtime hardware**. Previous instructions to install Node
 
 On macOS with Node 20.11.1, 2026-09-21: `npm run build` passed (strict TS check and Vite build), five synthetic tests passed, and the installation audit reported zero vulnerabilities at that time. These are not SimConnect, Windows, browser or deployment results. The environment has no .NET SDK, PowerShell or MSFS SDK/simulator.
 
-The new Windows source-check workflow has not run on GitHub. It produces no runtime artifact.
+Windows source checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). C# compilation and app-local load checking have now been added; first execution pending. The executable-only CI artifact is not a complete runtime package.
+
+User reported Windows 11 Pro, OS build 26200.9457, on the same Wi-Fi as the Mac. SSH client availability and tunnel setup pending.
 
 ## Gate 1 — build/release environment (not gaming laptop)
 

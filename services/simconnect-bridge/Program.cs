@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.ComponentModel;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -11,10 +13,16 @@ using Microsoft.FlightSimulator.SimConnect;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--check-runtime")
+            {
+                CheckRuntime();
+                return;
+            }
+            if (args.Length != 0) throw new ArgumentException("Usage: PaxAgent.exe [--check-runtime]");
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
             using (var window = new BridgeWindow())
             {
@@ -27,10 +35,28 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Log("BRIDGE", "Fatal startup error: check SDK, x64 runtime and DLL paths", ex.ToString());
+            Log("BRIDGE", "Startup failed: keep all runtime package files together", ex.ToString());
             Environment.ExitCode = 1;
         }
     }
+
+    private static void CheckRuntime()
+    {
+        if (!Environment.Is64BitProcess) throw new InvalidOperationException("Expected an x64 process");
+        var directory = AppDomain.CurrentDomain.BaseDirectory;
+        var managedPath = typeof(SimConnect).Assembly.Location;
+        if (!string.Equals(Path.GetDirectoryName(managedPath), directory.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("SimConnect must load from the application folder: " + managedPath);
+        var native = LoadLibraryEx(Path.Combine(directory, "SimConnect.dll"), IntPtr.Zero, 8);
+        if (native == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+        FreeLibrary(native);
+        Log("BRIDGE", "Runtime dependencies loaded successfully (x64, app-local SimConnect). Live MSFS connection not tested.");
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadLibraryEx(string path, IntPtr file, uint flags);
+    [DllImport("kernel32.dll")]
+    private static extern bool FreeLibrary(IntPtr module);
 
     public static void Log(string component, string message, string detail = null)
     {
