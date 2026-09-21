@@ -69,7 +69,8 @@ internal static class Program
 internal sealed class BridgeWindow : Control
 {
     private const int SimMessage = 0x0402;
-    private const uint Definition = 1, Request = 2, HealthRequest = 3;
+    private enum DefinitionId : uint { Telemetry = 1 }
+    private enum RequestId : uint { Telemetry = 2, Health = 3 }
     private readonly object gate = new object();
     private readonly CancellationTokenSource stop = new CancellationTokenSource();
     private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 2000 };
@@ -101,7 +102,7 @@ internal sealed class BridgeWindow : Control
                     Disconnect("SimConnect response timeout");
                     return;
                 }
-                if (connected) sim.RequestSystemState(HealthRequest, "Sim");
+                if (connected) sim.RequestSystemState(RequestId.Health, "Sim");
                 return;
             }
             if (DateTime.UtcNow < nextAttempt) return;
@@ -118,7 +119,7 @@ internal sealed class BridgeWindow : Control
                 "SDK exception " + data.dwException + " sendId=" + data.dwSendID + " index=" + data.dwIndex);
             sim.OnRecvSystemState += (sender, data) => { lastResponse = DateTime.UtcNow; };
             sim.OnRecvSimobjectData += (sender, data) => {
-                if (data.dwRequestID != Request) return;
+                if (data.dwRequestID != (uint)RequestId.Telemetry) return;
                 lastResponse = DateTime.UtcNow;
                 var raw = (RawTelemetry)data.dwData[0];
                 if (telemetry == null) Program.Log("SIMCONNECT", "Telemetry subscription active: first sample received");
@@ -152,14 +153,14 @@ internal sealed class BridgeWindow : Control
         Add("GEAR TOTAL PCT EXTENDED", "percent");
         Add("TRAILING EDGE FLAPS LEFT PERCENT", "percent over 100");
         Add("TRAILING EDGE FLAPS RIGHT PERCENT", "percent over 100");
-        sim.RegisterDataDefineStruct<RawTelemetry>(Definition);
-        sim.RequestDataOnSimObject(Request, Definition, SimConnect.SIMCONNECT_OBJECT_ID_USER,
+        sim.RegisterDataDefineStruct<RawTelemetry>(DefinitionId.Telemetry);
+        sim.RequestDataOnSimObject(RequestId.Telemetry, DefinitionId.Telemetry, SimConnect.SIMCONNECT_OBJECT_ID_USER,
             SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
         Program.Log("SIMCONNECT", "Telemetry subscription requested (1 Hz)");
     }
 
     private void Add(string name, string units) => sim.AddToDataDefinition(
-        Definition, name, units, SIMCONNECT_DATATYPE.FLOAT64, 0, SimConnect.SIMCONNECT_UNUSED);
+        DefinitionId.Telemetry, name, units, SIMCONNECT_DATATYPE.FLOAT64, 0, SimConnect.SIMCONNECT_UNUSED);
 
     protected override void WndProc(ref Message message)
     {
