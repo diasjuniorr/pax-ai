@@ -10,7 +10,7 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Current milestone:** Milestone 1 — Windows Live Acceptance.
 
-**Next action (authorized; in progress):** Deploy the existing backend and dashboard as one Render Free Web Service using [the deployment guide](render-deployment.md). Authentication, production static serving, and the agent's configurable WSS connection are implemented. Local build, eight tests and compiled production startup smoke test passed; updated Windows CI and live hosted verification are next. Then resolve the separate Windows runtime-package gate and perform real flight acceptance.
+**Next action (authorized; in progress):** Deploy the existing backend and dashboard as one Render Free Web Service using [the deployment guide](render-deployment.md). Authentication, production static serving, and the agent's configurable WSS connection are implemented. Local build, eight tests and compiled production startup smoke test passed. Updated Windows CI also passed in [GitHub run 35632679736](https://github.com/diasjuniorr/pax-ai/actions/runs/35632679736), including C# compilation, dependency loading and six endpoint-configuration cases. Live hosted verification is next. Then resolve the separate Windows runtime-package gate and perform real flight acceptance.
 
 **Current blocker:** The user must create the Render service in their account and provide its public URL; this session has no Render account connection. A complete SDK-free Windows runtime artifact still does not exist because exact SimConnect redistribution/runtime requirements remain unresolved. Windows compilation/app-local loading previously passed; live simulator acceptance has not. Milestone 1 is incomplete.
 

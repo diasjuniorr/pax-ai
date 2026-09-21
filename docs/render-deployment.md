@@ -24,7 +24,7 @@ The backend holds one active agent and its latest snapshot in memory. A service 
 
 ## Verification boundary
 
-Local automated checks cover invalid configuration, login/cookies, protected assets, origin checks, distinct agent/viewer credentials, and authenticated WebSocket delivery. A separate smoke test boots the compiled production entrypoint used by Render. Windows CI also compiles the agent and checks accepted/rejected endpoint configurations. Actual Render deployment, public TLS/WebSocket connectivity, and real MSFS telemetry must still be verified on the deployed service and laptop.
+Local automated checks cover invalid configuration, login/cookies, protected assets, origin checks, distinct agent/viewer credentials, and authenticated WebSocket delivery. A separate smoke test boots the compiled production entrypoint used by Render. Windows CI also compiles the agent and checks accepted/rejected endpoint configurations. All eight tests, the compiled production-server smoke, Windows C# compilation/runtime loading, and six agent-configuration cases passed in [GitHub run 35632679736](https://github.com/diasjuniorr/pax-ai/actions/runs/35632679736) for commit `3f5f485`. Actual Render deployment, public TLS/WebSocket connectivity, and real MSFS telemetry must still be verified on the deployed service and laptop.
 
 The SDK runtime packaging check remains separate from this hosted backend setup. Do not treat a working dashboard or compiled-agent artifact as completed simulator acceptance.
 
