@@ -26,6 +26,7 @@ dotnet build "$PSScriptRoot/../services/simconnect-bridge/SimConnectBridge.cspro
 if ($LASTEXITCODE -ne 0) { throw 'Agent compilation failed' }
 & "$output/PaxAgent.exe" --check-runtime
 if ($LASTEXITCODE -ne 0) { throw 'Runtime load check failed' }
+& "$PSScriptRoot/check-agent-configuration.ps1" -Agent "$output/PaxAgent.exe"
 # Publish our executable only until the SDK redistribution check is resolved.
 # SDK binaries and extracted installer files never enter a public artifact.
 $artifact = Join-Path $env:RUNNER_TEMP 'pax-agent-compiled'

@@ -17,6 +17,7 @@ for (const [key, label] of fields) {
 function clear() { for (const [key] of fields) element(key).textContent = '—'; }
 let lastMessage = 0;
 let socket: WebSocket;
+let reconnectDelay = 1000;
 function connect() {
   socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/telemetry`);
   socket.onopen = () => { lastMessage = Date.now(); element('server').textContent = 'Server: CONNECTED'; };
@@ -26,6 +27,7 @@ function connect() {
     const parsed = serverSnapshotSchema.safeParse(value);
     if (!parsed.success) return;
     lastMessage = Date.now();
+    reconnectDelay = 1000;
     const state = parsed.data;
     element('bridge').textContent = `Bridge: ${state.bridgeConnected ? 'CONNECTED' : 'DISCONNECTED'}`;
     element('sim').textContent = `MSFS: ${state.simulatorConnected ? 'CONNECTED' : 'DISCONNECTED'}`;
@@ -37,13 +39,15 @@ function connect() {
       element(key).textContent = typeof value === 'boolean' ? (value ? 'YES' : 'NO') : `${value.toFixed(decimals)} ${unit}`;
     }
   };
-  socket.onclose = () => {
+  socket.onclose = event => {
+    if (event.code === 1008) { location.reload(); return; }
     element('server').textContent = 'Server: DISCONNECTED · reconnecting';
     element('bridge').textContent = 'Bridge: UNKNOWN';
     element('sim').textContent = 'MSFS: UNKNOWN';
     element('freshness').textContent = 'No server connection';
     clear();
-    setTimeout(connect, 1000);
+    setTimeout(connect, reconnectDelay + Math.random() * 500);
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   };
   socket.onerror = () => socket.close();
 }

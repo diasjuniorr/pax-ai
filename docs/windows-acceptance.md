@@ -10,7 +10,7 @@ On macOS with Node 20.11.1, 2026-09-21: `npm run build` passed (strict TS check 
 
 Windows source checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). C# compilation and app-local load checking passed in [run 35628606547](https://github.com/diasjuniorr/pax-ai/actions/runs/35628606547): zero warnings/errors and both libraries loaded, without installing the SDK (administrative extraction only). The builder has other development/runtime software, so clean-laptop acceptance remains pending. The executable-only CI artifact is not a complete runtime package.
 
-User reported Windows 11 Pro, OS build 26200.9457, on the same Wi-Fi as the Mac. SSH client availability and tunnel setup pending.
+User reported Windows 11 Pro, OS build 26200.9457, on the same Wi-Fi as the Mac. The work-Mac SSH route was rejected. Render hosting is now authorized; follow [render-deployment.md](render-deployment.md).
 
 ## Gate 1 — build/release environment (not gaming laptop)
 
@@ -19,7 +19,7 @@ User reported Windows 11 Pro, OS build 26200.9457, on the same Wi-Fi as the Mac.
 - [x] Run `npm ci`, `npm run build`, `npm test` on Windows CI/build host (five tests passed).
 - [ ] Compile Release/x64 C# bridge; inspect native dependencies and build output.
 - [ ] Test startup on an SDK-free Windows runtime machine; identify any actual runtime-only dependency instead of installing build tools.
-- [ ] Implement/test protected configurable connection to Node on the development machine. Current code is loopback-only.
+- [~] Implement protected configurable WSS connection to Render and authenticated dashboard. Eight local tests and compiled production-server smoke passed; hosted verification pending.
 - [ ] Publish a versioned allowlisted artifact and checksum, with exact contents and launch instructions. Exclude source, SDK and development dependencies.
 
 Stop here until these checks pass. We have not established that MSFS installation alone provides the managed/native SimConnect client files.
@@ -40,7 +40,7 @@ $release -ge 528040
 
 1. Download the supplied `pax-windows-<version>.zip` and compare its hash using built-in PowerShell `Get-FileHash .\pax-windows-<version>.zip -Algorithm SHA256` (substitute the actual filename).
 2. Extract to a user-writable folder. Record its manifest/version. Install nothing unless the release notes establish a genuine runtime prerequisite and the user explicitly accepts that tradeoff.
-3. Have the existing Node backend/debug dashboard running on the development machine. Apply the package's tested endpoint/security configuration. Exact settings will be supplied with the first artifact; none exists today.
+3. Deploy the backend/debug dashboard on Render using [the guide](render-deployment.md). Sign in and configure the agent with the service WSS URL and its separate access key once a complete runtime package exists.
 4. Run the packaged `PaxAgent.exe` as a normal user, without MSFS running. On the development-host dashboard verify bridge connected, simulator disconnected and blank telemetry.
 5. Start MSFS 2024 and enter a flight in a stock aircraft with retractable gear and flaps. Verify connected status and live samples at about 1 Hz.
 6. Taxi, turn, climb and descend; verify altitude/AGL, IAS, vertical speed, true heading, position and on-ground state. Check actual gear/flap extension during movement. Account for true versus magnetic heading and MSL versus indicated altitude.

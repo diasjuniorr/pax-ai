@@ -2,15 +2,26 @@ import { createServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { bridgeMessageSchema } from '@pax/shared';
 import { TelemetryStore } from '@pax/telemetry';
+import { createHostedAccess, type HostedOptions } from './hosting';
 
 export function createTelemetryServer(log = (component: string, message: string, details = {}) => {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), component, message, ...details }));
-}) {
+}, hosted?: HostedOptions) {
+  const access = hosted ? createHostedAccess(hosted) : undefined;
   const store = new TelemetryStore();
   const http = createServer((req, res) => {
+    if (access) {
+      void access.handle(req, res).catch(() => {
+        if (!res.headersSent) res.writeHead(500);
+        res.end();
+      });
+      return;
+    }
     res.writeHead(req.url === '/health' ? 200 : 404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(req.url === '/health' ? { ok: true } : { error: 'Not found' }));
   });
+  http.requestTimeout = 15000;
+  http.headersTimeout = 10000;
   const bridges = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
   const viewers = new WebSocketServer({ noServer: true, maxPayload: 1024 });
   let bridge: WebSocket | undefined;
@@ -27,9 +38,10 @@ export function createTelemetryServer(log = (component: string, message: string,
     const path = req.url;
     // The bridge is a native client. A web page must not impersonate it.
     const origin = req.headers.origin;
-    const viewerOrigin = origin === 'http://127.0.0.1:5173' || origin === 'http://localhost:5173';
-    if ((path === '/bridge' && (origin || bridge)) ||
-        (path === '/telemetry' && origin && !viewerOrigin) ||
+    const viewerOrigin = hosted ? origin === hosted.publicOrigin :
+      origin === 'http://127.0.0.1:5173' || origin === 'http://localhost:5173';
+    if ((path === '/bridge' && (origin || bridge || (access && !access.bridgeAuthorized(req)))) ||
+        (path === '/telemetry' && (access ? (!viewerOrigin || !access.viewerAuthorized(req)) : (origin && !viewerOrigin))) ||
         (path !== '/bridge' && path !== '/telemetry')) {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       return;
@@ -73,7 +85,13 @@ export function createTelemetryServer(log = (component: string, message: string,
       publish();
     });
   });
-  viewers.on('connection', client => {
+  viewers.on('connection', (client, req) => {
+    if (access) {
+      const expiryCheck = setInterval(() => {
+        if (!access.viewerAuthorized(req)) client.close(1008, 'Sign in again');
+      }, 60000);
+      client.once('close', () => clearInterval(expiryCheck));
+    }
     log('WEB', 'Client connected');
     client.on('error', error => log('WEB', 'Socket error', { error: error.message }));
     client.send(JSON.stringify(store.snapshot()));

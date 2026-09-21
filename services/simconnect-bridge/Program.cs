@@ -22,9 +22,15 @@ internal static class Program
                 CheckRuntime();
                 return;
             }
-            if (args.Length != 0) throw new ArgumentException("Usage: PaxAgent.exe [--check-runtime]");
+            var configuration = BridgeConfiguration.FromEnvironment();
+            if (args.Length == 1 && args[0] == "--check-configuration")
+            {
+                Log("BRIDGE", "Connection configuration valid");
+                return;
+            }
+            if (args.Length != 0) throw new ArgumentException("Usage: PaxAgent.exe [--check-runtime|--check-configuration]");
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
-            using (var window = new BridgeWindow())
+            using (var window = new BridgeWindow(configuration))
             {
                 Console.CancelKeyPress += (sender, e) => {
                     e.Cancel = true;
@@ -66,8 +72,31 @@ internal static class Program
     }
 }
 
+internal sealed class BridgeConfiguration
+{
+    public Uri Endpoint { get; private set; }
+    public string Token { get; private set; }
+
+    public static BridgeConfiguration FromEnvironment()
+    {
+        var address = Environment.GetEnvironmentVariable("PAX_BRIDGE_URL") ?? "ws://127.0.0.1:3001/bridge";
+        var token = Environment.GetEnvironmentVariable("PAX_BRIDGE_TOKEN") ?? "";
+        Uri endpoint;
+        if (!Uri.TryCreate(address, UriKind.Absolute, out endpoint) ||
+            (endpoint.Scheme != "ws" && endpoint.Scheme != "wss") ||
+            (!endpoint.IsLoopback && endpoint.Scheme != "wss") ||
+            endpoint.AbsolutePath != "/bridge" || endpoint.Query != "" || endpoint.Fragment != "" || endpoint.UserInfo != "")
+            throw new ArgumentException("PAX_BRIDGE_URL must be wss://your-host/bridge (ws is allowed only on loopback). Do not put credentials in the URL.");
+        if ((!endpoint.IsLoopback || token.Length > 0) &&
+            !System.Text.RegularExpressions.Regex.IsMatch(token, @"\A[\x21-\x7e]{32,256}\z"))
+            throw new ArgumentException("PAX_BRIDGE_TOKEN must contain 32–256 non-space ASCII characters for a hosted connection.");
+        return new BridgeConfiguration { Endpoint = endpoint, Token = token };
+    }
+}
+
 internal sealed class BridgeWindow : Control
 {
+    private readonly BridgeConfiguration configuration;
     private const int SimMessage = 0x0402;
     private enum DefinitionId : uint { Telemetry = 1 }
     private enum RequestId : uint { Telemetry = 2, Health = 3 }
@@ -82,8 +111,9 @@ internal sealed class BridgeWindow : Control
     private DateTime nextAttempt;
     private DateTime nextWaitLog;
 
-    public BridgeWindow()
+    public BridgeWindow(BridgeConfiguration configuration)
     {
+        this.configuration = configuration;
         var handle = Handle; // Force creation before starting message dispatch.
         timer.Tick += (sender, args) => Tick();
         timer.Start();
@@ -197,16 +227,20 @@ internal sealed class BridgeWindow : Control
     private async Task PublishLoop(CancellationToken cancellation)
     {
         var nextLog = DateTime.MinValue;
+        var retryMilliseconds = 2000;
+        var jitter = new Random();
         while (!cancellation.IsCancellationRequested)
         {
             using (var socket = new ClientWebSocket())
             {
+                if (configuration.Token.Length > 0)
+                    socket.Options.SetRequestHeader("Authorization", "Bearer " + configuration.Token);
                 try
                 {
                     using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
                     {
-                        timeout.CancelAfter(3000);
-                        await socket.ConnectAsync(new Uri("ws://127.0.0.1:3001/bridge"), timeout.Token);
+                        timeout.CancelAfter(75000); // A free hosted service may need time to wake up.
+                        await socket.ConnectAsync(configuration.Endpoint, timeout.Token);
                     }
                     Program.Log("BRIDGE", "Connected to TypeScript server");
                     // Receive concurrently so close frames/pings are processed while publishing.
@@ -223,6 +257,7 @@ internal sealed class BridgeWindow : Control
                                     timeout.CancelAfter(3000);
                                     await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, timeout.Token);
                                 }
+                                retryMilliseconds = 2000;
                                 await Task.Delay(1000, session.Token);
                             }
                             await receive;
@@ -244,7 +279,8 @@ internal sealed class BridgeWindow : Control
                     }
                 }
             }
-            try { await Task.Delay(2000, cancellation); } catch (OperationCanceledException) { break; }
+            try { await Task.Delay(retryMilliseconds + jitter.Next(0, 1000), cancellation); } catch (OperationCanceledException) { break; }
+            retryMilliseconds = Math.Min(retryMilliseconds * 2, 30000);
         }
     }
 

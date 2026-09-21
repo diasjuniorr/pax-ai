@@ -23,6 +23,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: npm run test:hosted-build
   agent:
     runs-on: windows-2022
     timeout-minutes: 20

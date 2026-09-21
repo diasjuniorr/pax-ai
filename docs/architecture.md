@@ -188,3 +188,7 @@ Never use a slower, more expensive tier for a decision a cheaper deterministic t
 ### ContextBuilder — planned orchestrator responsibility
 
 ContextBuilder is the single place selecting/bounding model-visible context. Wednesday inputs: PassengerProfile + FlightSession + important permitted current flight facts + accepted current PerceivedEvent + bounded conversation. Later, add selected recent perceived events and relevant memory under explicit budgets. No retrieval/vector memory, new service or speculative framework. The event path becomes detector → priority/cooldown → perception → deterministic salience → ContextBuilder → OpenAI Realtime → speech; HOTAS/microphone uses the same minimal conversation lifecycle independently.
+
+## Hosted acceptance update — 2026-09-21
+
+The user approved a single Render Free Web Service because the work Mac cannot serve as the runtime backend. This changes deployment placement, not the C# / telemetry / application / browser responsibilities. Render hosts the existing Node backend and built dashboard; the gaming agent connects through authenticated WSS. No Supabase, database, multi-user infrastructure or broader cloud migration is included. See [render-deployment.md](render-deployment.md). This supersedes the work-Mac SSH plan and the earlier blanket deferral of cloud hosting for this acceptance test.

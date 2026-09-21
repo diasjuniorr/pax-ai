@@ -5,18 +5,19 @@ Milestone 1 only: a local SimConnect reader, TypeScript backend and browser debu
 The authoritative implementation tracker is [the PAX roadmap](docs/ROADMAP.md). Current gate: **Milestone 1 — Windows Live Acceptance**. Update the roadmap after every implementation task; later milestones depend on passing the current acceptance gate unless explicitly instructed otherwise.
 
 ```text
-MSFS 2024 → official SimConnect → C# bridge
-                                     ↓ ws://127.0.0.1:3001/bridge
-                             TypeScript server
-                                     ↓ WebSocket /telemetry (Vite proxy)
-                             Browser :5173
+Gaming laptop: MSFS 2024 → SimConnect → compiled C# agent
+                                              ↓ authenticated WSS
+Render Free Web Service: TypeScript backend → signed-in browser dashboard
 ```
+
+The hosted test configuration is ready in [render.yaml](render.yaml). Follow the [Render deployment guide](docs/render-deployment.md) to create the service. The work Mac is not part of the runtime connection. Local development still uses loopback and Vite.
+
 
 ## Gaming laptop — runtime hardware only
 
 Do **not** install Node/npm, Git, Visual Studio/VS Code, .NET SDK, Framework Developer Pack, MSFS SDK, Docker/WSL2 or databases on the gaming laptop for PAX. The previous all-components-on-Windows development instructions are superseded.
 
-The target must receive a compiled Windows artifact. **That artifact is not available yet:** SimConnect client redistribution/runtime requirements and the two-machine connection must be resolved first. See [deployment findings and blockers](docs/windows-deployment.md) and [runtime acceptance procedure](docs/windows-acceptance.md).
+The target must receive a compiled Windows artifact. **That artifact is not available yet:** SimConnect client redistribution/runtime requirements remain unresolved. The authenticated hosted connection is implemented but awaits live Render/laptop verification. See [deployment findings and blockers](docs/windows-deployment.md) and [runtime acceptance procedure](docs/windows-acceptance.md).
 
 The current bridge targets .NET Framework 4.8/x64; it is not a modern .NET self-contained application. Windows 11 includes a compatible Framework runtime, but the exact SimConnect client runtime prerequisites have not been verified on an SDK-free target. Do not install the SDK to conceal a missing-runtime failure.
 

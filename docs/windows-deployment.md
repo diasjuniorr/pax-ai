@@ -97,6 +97,10 @@ The [MSFS2024_AI project file](https://github.com/noscapect/MSFS2024_AI/blob/204
 
 This narrows the earlier technical uncertainty: there is now concrete source and shipped-artifact precedent, so framework/C++ alternatives need no further broad study. The reference's releasing document labels the DLLs distributable but does not supply a Microsoft permission notice in the inspected packaging path. Obtain PAX build inputs from the official SDK, not the third-party ZIP; record the applicable SDK redistribution basis before distributing PAX. This remaining release check is distinct from deciding to retain C# and implementing build tooling. No PAX artifact or live result is claimed by this study.
 
-## Home acceptance connection — 2026-09-21
+## Home acceptance connection — superseded
 
 The user confirmed Windows 11 Pro, build 26200.9457, and both computers on the same Wi-Fi. For initial acceptance use a Windows SSH local forward to the Mac loopback backend. This provides encrypted authenticated transport without modifying the existing endpoint or opening port 3001 to the LAN. Check `ssh -V` on Windows first. On Mac enable Remote Login for the specific account only; verify the host fingerprint, then use `ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L 127.0.0.1:3001:127.0.0.1:3001 <mac-user>@<mac-lan-ip>`. Keep the tunnel open during the test and close it afterwards. This is a temporary acceptance topology, not the final product deployment. Network and live simulator behavior remain unverified.
+
+## Render acceptance connection — current
+
+The user rejected using the work Mac as a runtime host and approved one Render Free Web Service. See [the deployment guide](render-deployment.md). Production serves the built dashboard and backend together, requires separate generated agent/dashboard secrets, and binds Render's assigned port. The C# agent accepts `PAX_BRIDGE_URL` and `PAX_BRIDGE_TOKEN`, requires WSS off loopback, and preserves normal certificate validation. The development-only loopback defaults remain. No SSH, inbound access to the work machine, Supabase, or database is required. This supersedes the earlier proposed remote-host transport changes and the previous deferral of all cloud hosting. Actual Render and gaming-laptop runtime tests remain pending; this does not resolve SDK runtime packaging.

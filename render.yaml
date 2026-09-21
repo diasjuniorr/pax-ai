@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: pax-ai
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: PAX_BRIDGE_TOKEN
+        generateValue: true
+      - key: PAX_DASHBOARD_TOKEN
+        generateValue: true
