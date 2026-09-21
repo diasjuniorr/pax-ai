@@ -12,7 +12,7 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Next action (authorized; in progress):** Compile the C# agent in GitHub Actions using pinned official SDK 1.7.3 and run an app-local dependency check. Prepare an SSH tunnel for the two-machine acceptance test. Resolve runtime packaging before giving the laptop an executable to run; then complete [windows-acceptance.md](windows-acceptance.md).
 
-**Current blocker:** No approved SDK-free runtime artifact exists. Exact SimConnect DLL redistribution/runtime requirements are unresolved; current loopback transport also needs a protected two-machine configuration. No Windows build, browser execution or live flight evidence exists. See [deployment findings](windows-deployment.md). Milestone 1 is incomplete; Phase 2 has not started.
+**Current blocker:** No approved SDK-free runtime artifact exists. Exact SimConnect DLL redistribution/runtime requirements are unresolved; current loopback transport also needs a protected two-machine configuration. Windows compilation and app-local dependency loading passed on CI; browser execution and live flight remain unverified. See [deployment findings](windows-deployment.md). Milestone 1 is incomplete; Phase 2 has not started.
 
 Last reviewed: 2026-09-21 against source, package boundaries, tests, [README](../README.md), [architecture](architecture.md), and [acceptance evidence](windows-acceptance.md). Dates below are targets, not permission to bypass acceptance gates.
 
@@ -59,7 +59,7 @@ The gaming PC is **runtime hardware, not a development environment**. Clean targ
 
 - [x] Review existing framework/transport against official runtime, SDK and runner documentation; record facts and unresolved requirements in [windows-deployment.md](windows-deployment.md).
 - [x] Windows TypeScript build and five synthetic tests passed in [GitHub run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297).
-- [~] Add pinned SDK C# compilation, `PaxAgent.exe --check-runtime`, and executable-only artifact; first CI execution pending. This artifact excludes SDK DLLs and is not a complete runtime package.
+- [x] Pinned SDK C# compilation and `PaxAgent.exe --check-runtime` passed in [run 35628606547](https://github.com/diasjuniorr/pax-ai/actions/runs/35628606547), with zero warnings/errors. Published executable-only artifact; it excludes SDK DLLs and is not a complete runtime package. A builder load check is not clean-laptop acceptance.
 - [ ] Establish official SDK build acquisition and exact managed/native DLL redistribution terms, required notices and supported SDK-free runtime deployment.
 - [x] Provision public repository `diasjuniorr/pax-ai`, push main, and verify Windows runner access. Official SDK 1.7.3 archive SHA-256 pinned in build script.
 - [ ] Compile bridge remotely and inspect/test its runtime dependency closure without the SDK installed on the runtime test machine.

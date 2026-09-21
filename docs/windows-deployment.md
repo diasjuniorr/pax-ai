@@ -1,6 +1,6 @@
 # Windows runtime deployment decision
 
-Reviewed 2026-09-21. **Status: runtime packaging blocked; no Windows runtime artifact produced.** This replaces the assumption that the gaming laptop is a development workstation. The existing C# / Node / browser responsibilities remain intact.
+Reviewed 2026-09-21. **Status: Windows compilation verified; complete runtime packaging still pending.** This replaces the assumption that the gaming laptop is a development workstation. The existing C# / Node / browser responsibilities remain intact.
 
 ## Decision and hard constraint
 
@@ -12,7 +12,7 @@ Retain the current thin native Windows process and `net48` target for now. Avoid
 
 [SimConnectBridge.csproj](../services/simconnect-bridge/SimConnectBridge.csproj) targets .NET Framework 4.8 (`net48`), x64, console executable, with `System.Windows.Forms` and `System.Web.Extensions`. The latter supplies `JavaScriptSerializer`. The message-loop approach follows the official managed-wrapper documentation, which specifies Framework 4.7 setup. Framework 4.8 was our compatible implementation choice, not an SDK mandate to install developer tools on end-user PCs. [Official managed setup](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/programming-simconnect-clients-using-managed-code/)
 
-The project references `Microsoft.FlightSimulator.SimConnect.dll` from the SDK and sets `Private=true`; it conditionally copies native `SimConnect.dll` if found. That copy instruction is neither redistribution permission nor evidence that the resulting executable runs on a clean machine. The executable is now named `PaxAgent.exe`; a missing native DLL fails the build.
+The project references `Microsoft.FlightSimulator.SimConnect.dll` from the SDK and sets `Private=true`; it copies native `SimConnect.dll` and now fails the build if either DLL is missing. That copy instruction is neither redistribution permission nor evidence that the resulting executable runs on a clean machine. The executable is now named `PaxAgent.exe`; a missing native DLL fails the build.
 
 | Component | Build environment | Gaming target |
 |---|---|---|
@@ -48,9 +48,9 @@ A Windows runner is technically suitable for `net48` compilation. GitHub's `wind
 
 An Asobo support response points to the official [SDK download manifest](https://sdk.flightsimulator.com/msfs2024/files/sdk.json), so downloading the SDK is not inherently dependent on running MSFS on the builder. The manifest currently distinguishes retail and flighting releases; do not automatically select the newest entry. Pin the appropriate release and checksum after validating its terms and installer behavior. Availability of a URL does not itself establish redistribution rights. [Asobo download guidance](https://devsupport.flightsimulator.com/t/download-sdk-outside-of-simulator/14610/5)
 
-Added [windows-checks.yml](../.github/workflows/windows-checks.yml) for `npm ci`, build/typecheck and synthetic tests on a Windows runner. It deliberately produces **no agent artifact**, installs no SDK and does not claim C# validation. [GitHub Node CI documentation](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs)
+Added [windows-checks.yml](../.github/workflows/windows-checks.yml) for `npm ci`, build/typecheck and synthetic tests on a Windows runner. The original source-only scope has since been extended with C# compilation as recorded below. [GitHub Node CI documentation](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs)
 
-Repository `diasjuniorr/pax-ai` is public and main is pushed. Windows TypeScript checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). The workflow now also compiles C# from pinned official SDK 1.7.3, administratively extracted without SDK installation, and invokes `--check-runtime`. Its artifact contains only PAX exe/config/manifest, not Microsoft DLLs, until redistribution is resolved. First C# run pending.
+Repository `diasjuniorr/pax-ai` is public and main is pushed. Windows TypeScript checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). The workflow now also compiles C# from pinned official SDK 1.7.3, administratively extracted without SDK installation, and invokes `--check-runtime`. Its artifact contains only PAX exe/config/manifest, not Microsoft DLLs, until redistribution is resolved. C# compile and app-local runtime check passed in [run 35628606547](https://github.com/diasjuniorr/pax-ai/actions/runs/35628606547): zero warnings/errors, both runtime libraries loaded. The runner has development/runtime software preinstalled, so this does not prove the clean laptop prerequisite set.
 
 Once SDK permissions and runtime closure are established, implement a separate packaging job: acquire pinned official build inputs; compile Release/x64; test startup without simulator and without SDK/GAC assumptions; stage an explicit allowlist; include version/commit/dependency hashes and required notices; publish `pax-windows-<version>.zip`. Hosted CI cannot substitute for a real flight acceptance test.
 

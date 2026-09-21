@@ -2,21 +2,21 @@
 
 The gaming laptop is **runtime hardware**. Previous instructions to install Node, .NET SDK, Framework Developer Pack or MSFS SDK on it are superseded. Do not copy/build source there. See [deployment decision](windows-deployment.md).
 
-**No downloadable PAX runtime ZIP exists yet.** C# compilation, SDK-free startup, cross-machine transport and live acceptance are unverified. Do not attempt the future `PaxAgent.exe` steps until a package and tested connection configuration are supplied.
+**No downloadable PAX runtime ZIP exists yet.** C# compilation and app-local dependency loading passed on the Windows builder. Clean-laptop startup, cross-machine transport and live acceptance are unverified. Do not attempt the future `PaxAgent.exe` steps until a package and tested connection configuration are supplied.
 
 ## Evidence already recorded
 
 On macOS with Node 20.11.1, 2026-09-21: `npm run build` passed (strict TS check and Vite build), five synthetic tests passed, and the installation audit reported zero vulnerabilities at that time. These are not SimConnect, Windows, browser or deployment results. The environment has no .NET SDK, PowerShell or MSFS SDK/simulator.
 
-Windows source checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). C# compilation and app-local load checking have now been added; first execution pending. The executable-only CI artifact is not a complete runtime package.
+Windows source checks passed in [run 35592717297](https://github.com/diasjuniorr/pax-ai/actions/runs/35592717297). C# compilation and app-local load checking passed in [run 35628606547](https://github.com/diasjuniorr/pax-ai/actions/runs/35628606547): zero warnings/errors and both libraries loaded, without installing the SDK (administrative extraction only). The builder has other development/runtime software, so clean-laptop acceptance remains pending. The executable-only CI artifact is not a complete runtime package.
 
 User reported Windows 11 Pro, OS build 26200.9457, on the same Wi-Fi as the Mac. SSH client availability and tunnel setup pending.
 
 ## Gate 1 — build/release environment (not gaming laptop)
 
 - [ ] Establish redistribution permission, notices and SDK-free client runtime layout for exact official SimConnect binaries.
-- [ ] Record SDK version, authorized source, checksums and build environment.
-- [ ] Run `npm ci`, `npm run build`, `npm test` on Windows CI/build host.
+- [x] Pin official SDK 1.7.3 archive SHA-256 in `scripts/build-windows.ps1`; build with `windows-2022`.
+- [x] Run `npm ci`, `npm run build`, `npm test` on Windows CI/build host (five tests passed).
 - [ ] Compile Release/x64 C# bridge; inspect native dependencies and build output.
 - [ ] Test startup on an SDK-free Windows runtime machine; identify any actual runtime-only dependency instead of installing build tools.
 - [ ] Implement/test protected configurable connection to Node on the development machine. Current code is loopback-only.
