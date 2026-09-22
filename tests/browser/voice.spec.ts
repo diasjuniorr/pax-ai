@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Let in-flight dashboard polls finish before Playwright disposes their HTTP responses.
+test.afterEach(async ({ context }) => { await context.unrouteAll({ behavior: 'wait' }); });
+
 test('voice preview holds/mutes microphone, waits for playback, and releases resources (stubbed WebRTC/provider)', async ({ page }) => {
   const origin = 'https://pax.test';
   const login = await page.request.post('http://127.0.0.1:31847/login', {

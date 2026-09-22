@@ -172,11 +172,11 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 ### Native continuity and live event pipeline — 2026-09-22
 
 - [x] Extend v1 with optional validated simulation metadata. Older agents retain telemetry display but are explicitly excluded from event detection.
-- [~] Read `TITLE` and `IS SLEW ACTIVE` alongside each native sample. Track Sim/Pause_EX1/aircraft-load/flight-load/position/crash-reset boundaries, rotate generation and reject obsolete request/connection callbacks. Native compilation, struct-layout/runtime validation and real MSFS callbacks await verification for this change.
+- [~] Read `TITLE` and `IS SLEW ACTIVE` alongside each native sample. Track Sim/Pause_EX1/aircraft-load/flight-load/position/crash-reset boundaries, rotate generation and reject obsolete request/connection callbacks. Native compilation and struct-layout/runtime checks passed in [run 35733365782](https://github.com/diasjuniorr/pax-ai/actions/runs/35733365782). Real MSFS callback behavior remains unverified.
 - [x] Wire fresh active snapshots through detector and objective gate, independent of passenger session/AI. Publish bounded current-generation event history, status, identity and phase; log EVENT/GATE decisions and detector status changes.
 - [x] Add the dashboard event panel, disconnect clearing, legacy-agent guidance and synthetic browser coverage.
 - [x] Local validation: 38 backend/logic tests, 5 browser tests, production build and hosted smoke passed. Personal-package vendor reuse reproduces the existing ZIP byte-for-byte and rejects an altered DLL before packaging. No live MSFS/voice result claimed.
-- [ ] Complete Windows CI and assemble the updated personal runtime; record the commit/hash in [windows-package.md](windows-package.md).
+- [ ] Complete Windows CI and assemble the updated personal runtime; record the commit/hash in [windows-package.md](windows-package.md). The first run passed the native job but failed during browser-fixture teardown (an in-flight response was disposed). Explicit route draining fixes the fixture race; all 5 browser tests pass locally again, with CI rerun pending.
 - [ ] Execute [tonight's test](tonight-test.md), record observed event/reset behavior and tune failures before enabling autonomous speech.
 
 ### Interaction Engine and OpenAI Realtime

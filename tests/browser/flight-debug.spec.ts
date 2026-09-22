@@ -1,5 +1,8 @@
 import { test, expect, type WebSocketRoute } from '@playwright/test';
 
+// Let in-flight dashboard polls finish before Playwright disposes their HTTP responses.
+test.afterEach(async ({ context }) => { await context.unrouteAll({ behavior: 'wait' }); });
+
 test('flight-event debug shows identity, events and suppression, and clears on disconnect (synthetic snapshot)', async ({ page }) => {
   const origin = 'https://pax.test';
   await page.context().route('https://pax.test/**', async route => {

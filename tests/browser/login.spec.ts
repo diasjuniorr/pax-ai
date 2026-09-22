@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Let in-flight dashboard polls finish before Playwright disposes their HTTP responses.
+test.afterEach(async ({ context }) => { await context.unrouteAll({ behavior: 'wait' }); });
+
 test('native browser form preserves its origin, signs in, and loads the protected dashboard', async ({ page }) => {
   // Keep the browser on an HTTPS origin while forwarding to the local test backend.
   // The browser itself supplies Origin, form encoding and secure session cookies.
