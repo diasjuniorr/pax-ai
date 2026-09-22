@@ -1,6 +1,6 @@
 # Windows runtime deployment decision
 
-Reviewed 2026-09-21. **Status: Windows compilation verified; complete runtime packaging still pending.** This replaces the assumption that the gaming laptop is a development workstation. The existing C# / Node / browser responsibilities remain intact.
+Reviewed 2026-09-21. **Current status: complete personal runtime ZIP assembled and CI-checked; gaming-laptop acceptance pending.** See [the package record](windows-package.md). Public redistribution permission remains unresolved. The historical investigation below documents how this deployment decision developed. This replaces the assumption that the gaming laptop is a development workstation. The existing C# / Node / browser responsibilities remain intact.
 
 ## Decision and hard constraint
 

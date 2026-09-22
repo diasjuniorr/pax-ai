@@ -17,7 +17,7 @@ The hosted test configuration is ready in [render.yaml](render.yaml). Follow the
 
 Do **not** install Node/npm, Git, Visual Studio/VS Code, .NET SDK, Framework Developer Pack, MSFS SDK, Docker/WSL2 or databases on the gaming laptop for PAX. The previous all-components-on-Windows development instructions are superseded.
 
-The target must receive a compiled Windows artifact. **That artifact is not available yet:** SimConnect client redistribution/runtime requirements remain unresolved. The authenticated hosted connection is implemented but awaits live Render/laptop verification. See [deployment findings and blockers](docs/windows-deployment.md) and [runtime acceptance procedure](docs/windows-acceptance.md).
+The target receives a compiled Windows artifact. A **complete personal test ZIP is now assembled locally**, including the two official SimConnect DLLs, launcher, runtime check, hashes and SDK license. See [package details](docs/windows-package.md) and [runtime acceptance](docs/windows-acceptance.md). Public GitHub artifacts intentionally contain only assembly inputs; the complete ZIP is transferred privately from the development Mac. No SDK is downloaded or installed on the gaming laptop.
 
 The current bridge targets .NET Framework 4.8/x64; it is not a modern .NET self-contained application. Windows 11 includes a compatible Framework runtime, but the exact SimConnect client runtime prerequisites have not been verified on an SDK-free target. Do not install the SDK to conceal a missing-runtime failure.
 
