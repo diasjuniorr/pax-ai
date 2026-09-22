@@ -24,6 +24,8 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run test:hosted-build
+      - run: npx playwright install chromium
+      - run: npm run test:browser
   agent:
     runs-on: windows-2022
     timeout-minutes: 20

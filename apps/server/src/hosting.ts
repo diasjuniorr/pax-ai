@@ -57,7 +57,8 @@ export function createHostedAccess(options: HostedOptions) {
   async function handle(req: IncomingMessage, res: ServerResponse) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'no-referrer');
+    // Native form POSTs can send Origin: null under no-referrer, breaking CSRF validation.
+    res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader('Content-Security-Policy', "default-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
     if (req.url === '/health' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}'); return;

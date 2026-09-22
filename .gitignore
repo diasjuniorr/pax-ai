@@ -6,3 +6,5 @@ obj/
 *.user
 .vs/
 .DS_Store
+test-results/
+playwright-report/

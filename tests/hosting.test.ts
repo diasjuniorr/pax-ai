@@ -47,6 +47,7 @@ test('dashboard requires login, protects assets, and rejects expired/tampered co
   assert.doesNotMatch(await (await fetch(`${url}/assets/app.js`)).text(), /private asset/);
   assert.equal((await login(bridgeToken)).status, 401);
   assert.equal((await login(dashboardToken, 'https://attacker.example')).status, 403);
+  assert.equal((await login(dashboardToken, 'null')).status, 403);
   const response = await login(dashboardToken);
   assert.equal(response.status, 303);
   const setCookie = response.headers.get('set-cookie')!;

@@ -29,3 +29,9 @@ Local automated checks cover invalid configuration, login/cookies, protected ass
 The SDK runtime packaging check remains separate from this hosted backend setup. Do not treat a working dashboard or compiled-agent artifact as completed simulator acceptance.
 
 Sources: [Render Blueprints](https://render.com/docs/blueprint-spec), [web services](https://render.com/docs/web-services), [WebSockets](https://render.com/docs/websocket), [free-plan behavior](https://render.com/docs/free).
+
+## Sign-in Forbidden fix — 2026-09-22
+
+The deployed service is `https://pax-ai-2zo8.onrender.com`. Its initial sign-in form used `Referrer-Policy: no-referrer`, which made native browser form submissions send `Origin: null` and fail the strict origin check before checking the access key. The fix uses `same-origin`; null and cross-site origins remain rejected. Existing keys need no change.
+
+After the fix passes CI, open the Render service and select **Manual Deploy → Deploy latest commit**. Wait for **Live**, then reopen the site's root URL and reload before signing in. Do not resubmit the old Forbidden page: it may retain the old policy. Browser regression checks run with `npm run build`, `npx playwright install chromium`, and `npm run test:browser`. The browser test uses an HTTPS routing fixture and checks the resulting cookie in a new tab because Playwright does not route the redirect chain; the real Render redirect still needs live confirmation.

@@ -19,6 +19,7 @@
     "build": "npm run typecheck && vite build --config apps/web/vite.config.ts && esbuild apps/server/src/index.ts --bundle --platform=node --format=cjs --external:ws --outfile=dist/server/index.cjs",
     "start": "node dist/server/index.cjs",
     "test:hosted-build": "node scripts/check-hosted-build.mjs",
+    "test:browser": "playwright test",
     "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20.17.0",
     "@types/ws": "^8.5.13",
     "concurrently": "^9.1.0",
