@@ -2,12 +2,13 @@ services:
   - type: web
     name: pax-ai
     runtime: node
+    branch: main
     plan: free
     region: frankfurt
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
-    autoDeployTrigger: 'off'
+    autoDeployTrigger: checksPass
     envVars:
       - key: NODE_VERSION
         value: '22'

@@ -12,7 +12,7 @@ One Free Web Service hosts the existing backend and compiled telemetry dashboard
 6. Expect **Server: CONNECTED**, **Bridge: DISCONNECTED**, **MSFS: DISCONNECTED** until the Windows runtime package is running. These disconnected states are normal at this stage.
 7. Share only the public service URL so we can check `/health` and continue Windows configuration.
 
-The Blueprint specifies the build command `npm ci --include=dev && npm run build`, start command `npm start`, and `/health` health check. Render supplies `PORT` and `RENDER_EXTERNAL_URL`; no manual hostname configuration is needed. Node 22 and `NODE_ENV=production` are explicit. Auto-deploy is off: later changes require **Manual Deploy → Deploy latest commit** after CI passes.
+The Blueprint specifies the build command `npm ci --include=dev && npm run build`, start command `npm start`, and `/health` health check. Render supplies `PORT` and `RENDER_EXTERNAL_URL`; no manual hostname configuration is needed. Node 22 and `NODE_ENV=production` are explicit. Automatic deployment is configured for branch `main` with `autoDeployTrigger: checksPass`: pushes and merges deploy after GitHub checks pass. The existing service must sync its Blueprint or have **Settings → Auto-Deploy → After CI Checks Pass** saved once. A connected GitHub account/repository is required; a service connected only through a public repository URL cannot auto-deploy. Confirm the linked branch is `main`. Commits with no CI checks do not auto-deploy; use `[skip render]` when intentionally skipping deployment.
 
 ## Access and runtime connection
 
@@ -35,3 +35,7 @@ Sources: [Render Blueprints](https://render.com/docs/blueprint-spec), [web servi
 The deployed service is `https://pax-ai-2zo8.onrender.com`. Its initial sign-in form used `Referrer-Policy: no-referrer`, which made native browser form submissions send `Origin: null` and fail the strict origin check before checking the access key. The fix uses `same-origin`; null and cross-site origins remain rejected. Existing keys need no change.
 
 After the fix passes CI, open the Render service and select **Manual Deploy → Deploy latest commit**. Wait for **Live**, then reopen the site's root URL and reload before signing in. Do not resubmit the old Forbidden page: it may retain the old policy. Browser regression checks run with `npm run build`, `npx playwright install chromium`, and `npm run test:browser`. The browser test uses an HTTPS routing fixture and checks the resulting cookie in a new tab because Playwright does not route the redirect chain; the real Render redirect still needs live confirmation.
+
+## Live confirmation and automatic deployment — 2026-09-22
+
+The user confirmed successful sign-in and dashboard display after deploying the sign-in fix. Automatic deployment is now requested and configured in the repository for `main` after CI passes. Applying/verifying this setting on the existing Render service remains a dashboard action because this session has no Render account connection. See [Render auto-deploy documentation](https://render.com/docs/deploys#automatic-deploys).
