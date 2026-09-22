@@ -149,7 +149,7 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 - [x] Verify model/factory behavior with relevant checks, including that profiles need not originate from the random generator.
 
 - [x] Add authenticated dashboard controls for generating/editing a passenger and starting/ending one shared session. Client/server validation, immutable active profile snapshot, session identity/timestamp, conflict detection and refresh recovery are implemented.
-- [x] Local validation: 11 backend tests and 2 browser tests passed, including generation → manual edit → start → refresh → end. Production build passed. Updated CI and hosted deployment verification pending.
+- [x] Local validation: 11 backend tests and 2 browser tests passed, including generation → manual edit → start → refresh → end. Production build passed. Windows CI also passed in [run 35704140692](https://github.com/diasjuniorr/pax-ai/actions/runs/35704140692) for `9afc9b5`, including the production smoke test. Hosted deployment verification is pending: an unauthenticated `/api/session` request still returned the previous login HTML, instead of the new endpoint's JSON 401; asked the user to check Render Events.
 - Session storage is intentionally in memory: browser refresh retains it; a server restart/deployment clears it. No database, saved presets or AI generation. Random generation chooses among four coherent editable starter profiles.
 
 ### Interaction Engine and OpenAI Realtime
