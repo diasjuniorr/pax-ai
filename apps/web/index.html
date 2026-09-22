@@ -1,3 +1,22 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pax telemetry debug</title></head>
-<body><main><h1>Pax · Telemetry debug</h1><p id="server">Server: DISCONNECTED</p><p id="bridge">Bridge: DISCONNECTED</p><h2 id="sim">MSFS: DISCONNECTED</h2><p id="freshness" role="status">Waiting for telemetry</p><table><tbody id="values"></tbody></table><p>Heading is true north. Gear and flaps show actual extension.</p></main><script type="module" src="/src/main.ts"></script></body></html>
+<body><main><h1>Pax · Telemetry debug</h1><section aria-labelledby="passenger-heading"><h2 id="passenger-heading">Passenger and flight</h2>
+<p>Create an editable passenger yourself or use a starter profile. Voice conversation is coming next.</p>
+<p id="session-status" role="status">Loading session...</p><p id="session-summary"></p>
+<form id="session-form"><fieldset id="session-fields"><legend>Passenger profile</legend>
+<button id="random-passenger" type="button">Generate passenger</button>
+<div class="form-grid">
+<label>Name<input id="passenger-name" required maxlength="80"></label>
+<label>Age<input id="passenger-age" type="number" min="1" max="120" required></label>
+<label>Gender<input id="passenger-gender" required maxlength="60"></label>
+<label>Occupation<input id="passenger-occupation" required maxlength="100"></label>
+<label>Flight disposition<select id="passenger-disposition"><option value="calm">Calm</option><option value="curious">Curious</option><option value="nervous">Nervous</option><option value="enthusiastic">Enthusiastic</option></select></label>
+<label>Personality traits (comma-separated, up to 6)<input id="passenger-traits" required maxlength="245"></label>
+<label class="wide">Reason for traveling<textarea id="passenger-reason" required maxlength="400"></textarea></label>
+<label>Expected duration (minutes)<input id="flight-duration" type="number" min="1" max="1440" value="45" required></label>
+<label>Origin (optional)<input id="flight-origin" maxlength="120" placeholder="Airport or city"></label>
+<label>Destination (optional)<input id="flight-destination" maxlength="120" placeholder="Airport or city"></label>
+</div><button type="submit">Start session</button></fieldset></form>
+<button id="end-session" type="button" hidden>End session</button>
+<p id="session-error" role="alert"></p><p class="hint">One shared session for this dashboard. Refreshing keeps it; a server restart or deployment clears it. Starting a session does not start a simulator flight.</p></section>
+<h2>Simulator telemetry</h2><p id="server">Server: DISCONNECTED</p><p id="bridge">Bridge: DISCONNECTED</p><h2 id="sim">MSFS: DISCONNECTED</h2><p id="freshness" role="status">Waiting for telemetry</p><table><tbody id="values"></tbody></table><p>Heading is true north. Gear and flaps show actual extension.</p></main><script type="module" src="/src/main.ts"></script></body></html>

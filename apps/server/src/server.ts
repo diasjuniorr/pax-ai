@@ -3,13 +3,20 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { bridgeMessageSchema } from '@pax/shared';
 import { TelemetryStore } from '@pax/telemetry';
 import { createHostedAccess, type HostedOptions } from './hosting';
+import { createSessionApi } from './session-api';
 
 export function createTelemetryServer(log = (component: string, message: string, details = {}) => {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), component, message, ...details }));
 }, hosted?: HostedOptions) {
   const access = hosted ? createHostedAccess(hosted) : undefined;
+  const sessionApi = createSessionApi(req => !access || access.viewerAuthorized(req),
+    hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173']);
   const store = new TelemetryStore();
   const http = createServer((req, res) => {
+    if (req.url?.startsWith('/api/')) {
+      void sessionApi(req, res).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); });
+      return;
+    }
     if (access) {
       void access.handle(req, res).catch(() => {
         if (!res.headersSent) res.writeHead(500);

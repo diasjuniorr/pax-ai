@@ -4,3 +4,17 @@ table { border-collapse: collapse; width: 100%; background: white; }
 th, td { padding: .5rem 1rem; border-bottom: 1px solid #ddd; text-align: left; }
 td { text-align: right; font-variant-numeric: tabular-nums; }
 .stale { color: #875300; background: #fff5d9; }
+section { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1.25rem; margin: 1.5rem 0; }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-weight: 600; margin-bottom: .75rem; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+label { display: flex; flex-direction: column; gap: .35rem; }
+input, select, textarea, button { font: inherit; padding: .55rem; }
+input, select, textarea { min-width: 0; border: 1px solid #aaa; border-radius: 4px; }
+textarea { min-height: 4rem; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+.wide { grid-column: 1 / -1; }
+.hint { font-size: .9rem; color: #555; }
+#session-error { color: #a32020; }
+@media (max-width: 520px) { body { margin: 1rem; } .form-grid { grid-template-columns: 1fr; } }

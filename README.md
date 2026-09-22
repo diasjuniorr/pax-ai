@@ -1,6 +1,6 @@
 # Pax — MSFS 2024 telemetry MVP
 
-Milestone 1 only: a local SimConnect reader, TypeScript backend and browser debug dashboard. No AI, audio, passengers, event detection or database.
+PAX currently has a local SimConnect reader, hosted TypeScript backend, telemetry dashboard, and editable passenger/flight-session foundation. AI voice, HOTAS, autonomous event reactions, and a database are not implemented. Live simulator acceptance remains pending.
 
 The authoritative implementation tracker is [the PAX roadmap](docs/ROADMAP.md). Current gate: **Milestone 1 — Windows Live Acceptance**. Update the roadmap after every implementation task; later milestones depend on passing the current acceptance gate unless explicitly instructed otherwise.
 
@@ -79,3 +79,7 @@ Build-reference/targeting-pack failures belong on the builder. Assembly-load or 
 - `docs`: protocol, SimVar mapping and acceptance evidence.
 
 World context, passenger, interaction and AI orchestration will be separate modules consuming normalized telemetry when their milestones require them. No speculative classes or empty services are needed yet. See [architecture and mapping](docs/architecture.md).
+
+## Passenger and session controls
+
+Sign into the hosted dashboard to create a profile manually or choose **Generate passenger** for one of four coherent starter profiles, then edit its fields. Set expected duration and optionally origin/destination, then select **Start session**. Active profiles are held as a snapshot; end the current session before starting another. A single session is shared by dashboard tabs. Refresh retains it, but a server restart/deployment clears it. This feature works without MSFS and does not initiate a simulator flight. No voice/AI request is made.

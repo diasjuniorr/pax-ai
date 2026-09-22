@@ -33,3 +33,23 @@ export const serverSnapshotSchema = z.object({
   lastReceivedAt: finite.nullable(), telemetry: aircraftTelemetrySchema.nullable(),
 });
 export type ServerSnapshot = z.infer<typeof serverSnapshotSchema>;
+
+const shortText = (max: number) => z.string().trim().min(1).max(max);
+export const passengerProfileSchema = z.object({
+  name: shortText(80), age: z.number().int().min(1).max(120),
+  gender: shortText(60), occupation: shortText(100), tripReason: shortText(400),
+  personalityTraits: z.array(shortText(40)).min(1).max(6).refine(values =>
+    new Set(values.map(value => value.toLowerCase())).size === values.length, 'Use distinct personality traits'),
+  flightDisposition: z.enum(['calm', 'curious', 'nervous', 'enthusiastic']),
+}).strict();
+export type PassengerProfile = z.infer<typeof passengerProfileSchema>;
+export const flightSessionInputSchema = z.object({
+  passenger: passengerProfileSchema,
+  expectedDurationMinutes: z.number().int().min(1).max(1440),
+  origin: shortText(120).optional(), destination: shortText(120).optional(),
+}).strict();
+export const flightSessionSchema = flightSessionInputSchema.extend({
+  id: z.string().uuid(), startedAt: z.number().int().nonnegative(),
+});
+export type FlightSession = z.infer<typeof flightSessionSchema>;
+export const flightSessionStateSchema = z.object({ session: flightSessionSchema.nullable() });

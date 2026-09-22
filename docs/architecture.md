@@ -192,3 +192,9 @@ ContextBuilder is the single place selecting/bounding model-visible context. Wed
 ## Hosted acceptance update — 2026-09-21
 
 The user approved a single Render Free Web Service because the work Mac cannot serve as the runtime backend. This changes deployment placement, not the C# / telemetry / application / browser responsibilities. Render hosts the existing Node backend and built dashboard; the gaming agent connects through authenticated WSS. No Supabase, database, multi-user infrastructure or broader cloud migration is included. See [render-deployment.md](render-deployment.md). This supersedes the work-Mac SSH plan and the earlier blanket deferral of cloud hosting for this acceptance test.
+
+## Passenger/session foundation — 2026-09-22
+
+With explicit user authorization to proceed while the laptop is unavailable, the shared package now defines validated `PassengerProfile`, `FlightSession` and input/state schemas. The server's passenger module provides a coherent starter factory and in-memory single-session store. Manual profiles use exactly the same model. Session IDs and start timestamps are server-owned, active profiles are copied, and stale end/replacement requests conflict instead of overwriting another session.
+
+Authenticated `/api/session` GET/POST, `/api/session/end` POST and `/api/passenger/random` POST serve the dashboard. Mutation requests require the configured browser origin and JSON; the agent credential cannot access these endpoints. Session state is separate from simulator connection/freshness and unaffected by bridge disconnect. It is not persisted across process restarts. The browser polls shared session state and preserves an unsaved draft while no session is active. No OpenAI calls, audio, HOTAS or flight event detection are added.

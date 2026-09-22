@@ -92,3 +92,26 @@ test('hosted WebSockets require distinct agent credentials and an authenticated 
   bridge.send(JSON.stringify({ version: 1, type: 'bridgeSnapshot', simulatorConnected: true, telemetry: null }));
   assert.equal(JSON.parse(String((await snapshot)[0])).simulatorConnected, true);
 });
+
+test('session API isolates agent credentials, validates input and prevents concurrent replacement', async t => {
+  const { url, login } = await setup(t);
+  const path = `${url}/api/session`;
+  assert.equal((await fetch(path)).status, 401);
+  assert.equal((await fetch(path, { headers: { Authorization: `Bearer ${bridgeToken}` } })).status, 401);
+  const cookie = (await login(dashboardToken)).headers.get('set-cookie')!.split(';')[0]!;
+  const headers = { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' };
+  const post = (route: string, value: unknown, extra = {}) => fetch(`${url}${route}`, { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify(value) });
+  assert.deepEqual(await (await fetch(path, { headers })).json(), { session: null });
+  assert.equal((await post('/api/passenger/random', {}, { Origin: 'https://attacker.example' })).status, 403);
+  const generated = await (await post('/api/passenger/random', {})).json() as { passenger: Record<string, unknown> };
+  const input = { passenger: { ...generated.passenger, name: 'Manual edit' }, expectedDurationMinutes: 30, origin: 'Madrid', destination: 'Barcelona' };
+  assert.equal((await post('/api/session', { ...input, expectedDurationMinutes: 0 })).status, 400);
+  const responses = await Promise.all([post('/api/session', input), post('/api/session', input)]);
+  assert.deepEqual(responses.map(response => response.status).sort(), [201, 409]);
+  const current = await (await fetch(path, { headers })).json() as { session: { id: string; passenger: { name: string }; startedAt: number } };
+  assert.equal(current.session.passenger.name, 'Manual edit');
+  assert.ok(current.session.startedAt > 0);
+  assert.equal((await post('/api/session/end', { id: '00000000-0000-4000-8000-000000000000' })).status, 409);
+  assert.equal((await post('/api/session/end', { id: current.session.id })).status, 200);
+  assert.deepEqual(await (await fetch(path, { headers })).json(), { session: null });
+});

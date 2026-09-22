@@ -1,5 +1,6 @@
 import { serverSnapshotSchema, type AircraftTelemetry } from '@pax/shared';
 import './style.css';
+import './session';
 const element = (id: string) => document.getElementById(id)!;
 const fields: [keyof AircraftTelemetry, string, string, number][] = [
   ['altitudeMslFeet', 'Altitude MSL', 'ft', 0], ['altitudeAglFeet', 'AGL', 'ft', 0],

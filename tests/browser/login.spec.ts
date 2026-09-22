@@ -29,3 +29,33 @@ test('native browser form preserves its origin, signs in, and loads the protecte
   await dashboard.reload();
   await expect(dashboard.getByRole('heading', { name: 'Pax · Telemetry debug' })).toBeVisible();
 });
+
+test('passenger can be generated, edited, started, restored on reload and ended', async ({ page }) => {
+  await page.context().route('https://pax.test/**', async route => {
+    const url = new URL(route.request().url());
+    const response = await route.fetch({ url: `http://127.0.0.1:31847${url.pathname}${url.search}`, maxRedirects: 0 });
+    await route.fulfill({ response });
+  });
+  // Authentication itself is exercised with a real native form in the first test.
+  const response = await page.request.post('http://127.0.0.1:31847/login', {
+    headers: { Origin: 'https://pax.test' }, form: { token: 'browser-test-dashboard-key-not-a-real-secret' }, maxRedirects: 0,
+  });
+  const value = response.headers()['set-cookie']!.split(';')[0]!.split('=')[1]!;
+  await page.context().addCookies([{ name: '__Host-pax_session', value, url: 'https://pax.test', secure: true, httpOnly: true, sameSite: 'Strict' }]);
+  await page.goto('https://pax.test/');
+  await page.getByRole('button', { name: 'Generate passenger' }).click();
+  await expect(page.getByLabel('Name', { exact: true })).not.toHaveValue('');
+  await page.getByLabel('Name', { exact: true }).fill('My passenger');
+  await page.getByLabel('Expected duration').fill('90');
+  await page.getByLabel('Origin (optional)').fill('Madrid');
+  await page.getByLabel('Destination (optional)').fill('Lisbon');
+  await page.getByRole('button', { name: 'Start session', exact: true }).click();
+  await expect(page.locator('#session-status')).toHaveText('Session active');
+  await expect(page.locator('#session-summary')).toContainText('My passenger · 90 minutes · Madrid → Lisbon');
+  await page.reload();
+  await expect(page.locator('#session-status')).toHaveText('Session active');
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('My passenger');
+  await expect(page.getByRole('button', { name: 'Start session', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'End session', exact: true }).click();
+  await expect(page.locator('#session-status')).toHaveText('No active session');
+});
