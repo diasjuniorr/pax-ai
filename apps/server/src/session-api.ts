@@ -1,10 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z, ZodError } from 'zod';
 import { FlightSessionStore, generatePassenger } from './passenger';
+import { ConversationError, ConversationStore, type ConversationOptions } from './conversation';
 
-export function createSessionApi(authorize: (req: IncomingMessage) => boolean, allowedOrigins: string[]) {
+export function createSessionApi(authorize: (req: IncomingMessage) => boolean, allowedOrigins: string[], options: ConversationOptions = {}) {
   const store = new FlightSessionStore();
-  return async (req: IncomingMessage, res: ServerResponse) => {
+  const conversation = new ConversationStore(options);
+  const handle = async (req: IncomingMessage, res: ServerResponse) => {
     const send = (status: number, data: unknown) => {
       res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       res.end(JSON.stringify(data));
@@ -14,8 +16,9 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
       send(403, { error: 'Forbidden' }); return;
     }
     if (req.url === '/api/session' && req.method === 'GET') { send(200, store.snapshot()); return; }
+    if (req.url === '/api/conversation' && req.method === 'GET') { send(200, conversation.snapshot()); return; }
     if (req.method !== 'POST') { send(405, { error: 'Method not allowed' }); return; }
-    if (!['/api/session', '/api/session/end', '/api/passenger/random'].includes(req.url ?? '')) { send(404, { error: 'Not found' }); return; }
+    if (!['/api/session', '/api/session/end', '/api/passenger/random', '/api/conversation'].includes(req.url ?? '')) { send(404, { error: 'Not found' }); return; }
     if (req.headers['content-type']?.split(';')[0] !== 'application/json') { send(415, { error: 'Expected JSON' }); return; }
     try {
       let body = '', bytes = 0;
@@ -26,6 +29,9 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
         body += chunk.toString();
       }
       const data: unknown = JSON.parse(body);
+      if (req.url === '/api/conversation') {
+        send(200, await conversation.send(store.snapshot().session, data)); return;
+      }
       if (req.url === '/api/passenger/random') {
         z.object({}).strict().parse(data);
         send(200, { passenger: generatePassenger() }); return;
@@ -33,16 +39,20 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
       if (req.url === '/api/session/end') {
         const { id } = z.object({ id: z.string().uuid() }).strict().parse(data);
         if (!store.end(id)) { send(409, { error: 'That session is no longer active. Refresh the session state.' }); return; }
+        conversation.reset(null);
         send(200, store.snapshot()); return;
       }
       const session = store.start(data);
       if (!session) { send(409, { error: 'A session is already active. End it before starting another.' }); return; }
+      conversation.reset(session.id);
       send(201, { session });
     } catch (error) {
+      if (error instanceof ConversationError) { send(error.status, { error: error.message }); return; }
       if (error instanceof ZodError || error instanceof SyntaxError) {
-        send(400, { error: 'Check the passenger fields, duration, and route.' }); return;
+        send(400, { error: 'Check the submitted fields and message length (1–2000 characters).' }); return;
       }
       throw error;
     }
   };
+  return Object.assign(handle, { close: () => conversation.reset(null) });
 }

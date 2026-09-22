@@ -9,15 +9,16 @@ import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
 import { createTelemetryServer } from '../apps/server/src/server';
 import { validateHostedOptions } from '../apps/server/src/hosting';
+import type { ConversationOptions } from '../apps/server/src/conversation';
 
 const origin = 'https://pax-test.onrender.com';
 const bridgeToken = 'b'.repeat(48), dashboardToken = 'd'.repeat(48);
-async function setup(t: TestContext) {
+async function setup(t: TestContext, conversation: ConversationOptions = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'pax-hosting-'));
   writeFileSync(join(directory, 'index.html'), '<h1>Private dashboard</h1>');
   mkdirSync(join(directory, 'assets'));
   writeFileSync(join(directory, 'assets/app.js'), '/* private asset */');
-  const server = createTelemetryServer(() => {}, { publicOrigin: origin, bridgeToken, dashboardToken, staticDirectory: directory });
+  const server = createTelemetryServer(() => {}, { publicOrigin: origin, bridgeToken, dashboardToken, staticDirectory: directory }, conversation);
   const sockets: WebSocket[] = [];
   t.after(async () => { for (const socket of sockets) socket.terminate(); await server.close(); rmSync(directory, { recursive: true }); });
   server.http.listen(0, '127.0.0.1'); await once(server.http, 'listening');
@@ -114,4 +115,31 @@ test('session API isolates agent credentials, validates input and prevents concu
   assert.equal((await post('/api/session/end', { id: '00000000-0000-4000-8000-000000000000' })).status, 409);
   assert.equal((await post('/api/session/end', { id: current.session.id })).status, 200);
   assert.deepEqual(await (await fetch(path, { headers })).json(), { session: null });
+});
+
+test('conversation HTTP API requires dashboard authorization, rejects stale sessions and clears transcript on end', async t => {
+  let calls = 0;
+  const { url, login } = await setup(t, { provider: async () => { calls++; return { text: 'I am visiting family.' }; } });
+  const path = `${url}/api/conversation`;
+  assert.equal((await fetch(path)).status, 401);
+  assert.equal((await fetch(path, { headers: { Authorization: `Bearer ${bridgeToken}` } })).status, 401);
+  const cookie = (await login(dashboardToken)).headers.get('set-cookie')!.split(';')[0]!;
+  const headers = { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' };
+  const post = (route: string, body: unknown, extra = {}) => fetch(`${url}${route}`, { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify(body) });
+  const generated = await (await post('/api/passenger/random', {})).json() as { passenger: unknown };
+  const { session } = await (await post('/api/session', { passenger: generated.passenger, expectedDurationMinutes: 30 })).json() as { session: { id: string } };
+  const body = { sessionId: session.id, requestId: '00000000-0000-4000-8000-000000000001', message: 'Why are you traveling?' };
+  assert.equal((await post('/api/conversation', body, { Origin: 'https://attacker.example' })).status, 403);
+  assert.equal((await post('/api/conversation', { ...body, message: '' })).status, 400);
+  assert.equal((await post('/api/conversation', { ...body, sessionId: body.requestId })).status, 409);
+  assert.equal(calls, 0);
+  const response = await post('/api/conversation', body);
+  assert.equal(response.status, 200);
+  const state = await response.json();
+  assert.deepEqual(await (await fetch(path, { headers })).json(), state);
+  assert.equal((await post('/api/conversation', body)).status, 200);
+  assert.equal(calls, 1);
+  await post('/api/session/end', { id: session.id });
+  assert.deepEqual(await (await fetch(path, { headers })).json(), { sessionId: null, configured: true, status: 'idle', messages: [] });
+  assert.equal((await post('/api/conversation', body)).status, 409);
 });

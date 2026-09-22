@@ -1,6 +1,6 @@
 # Pax — MSFS 2024 telemetry MVP
 
-PAX currently has a local SimConnect reader, hosted TypeScript backend, telemetry dashboard, and editable passenger/flight-session foundation. AI voice, HOTAS, autonomous event reactions, and a database are not implemented. Live simulator acceptance remains pending.
+PAX currently has a local SimConnect reader, hosted TypeScript backend, telemetry dashboard, editable passenger/flight-session controls, and a text conversation preview backed by OpenAI. AI voice, HOTAS, autonomous event reactions, and a database are not implemented. Live simulator acceptance remains pending.
 
 The authoritative implementation tracker is [the PAX roadmap](docs/ROADMAP.md). Current gate: **Milestone 1 — Windows Live Acceptance**. Update the roadmap after every implementation task; later milestones depend on passing the current acceptance gate unless explicitly instructed otherwise.
 
@@ -45,7 +45,7 @@ The bridge currently hardcodes a loopback backend address. Running Node on anoth
 
 ## CI and artifacts
 
-[Windows source checks](.github/workflows/windows-checks.yml) install Node dependencies and run the TypeScript/web build and synthetic tests on `windows-2022`. This workflow does not build the bridge or upload a Windows runtime ZIP. SDK deployment questions block that separate packaging step. There is no recorded GitHub Actions run or configured remote in the implementation workspace.
+[Windows checks](.github/workflows/windows-checks.yml) build and test the TypeScript/web application, run browser checks, compile the C# agent against verified official SDK inputs and exercise runtime/configuration checks on `windows-2022`. Public artifacts contain PAX assembly inputs; the complete personal runtime ZIP is assembled locally as described in [package details](docs/windows-package.md).
 
 ## Prove the live integration
 
@@ -59,7 +59,7 @@ npm test
 npm run build
 ```
 
-`build` type-checks the workspace and builds the web assets. The supported MVP launch is `npm run dev`; a production server/deployment is out of scope. Tests use a synthetic bridge solely to verify validation, real WebSocket delivery, disconnect/reconnect and heartbeat expiry. There is no mock mode that can be mistaken for live simulator data.
+`build` type-checks the workspace and builds both the web assets and production server. Render runs `npm start`; development uses `npm run dev`. Tests cover telemetry transport, hosting/auth, passenger sessions and conversation lifecycle. Provider fixtures are confined to tests; they do not prove live model behavior or simulator acceptance.
 
 The Node/web portions can be developed on macOS/Linux. The bridge cannot run there.
 
@@ -82,4 +82,8 @@ World context, passenger, interaction and AI orchestration will be separate modu
 
 ## Passenger and session controls
 
-Sign into the hosted dashboard to create a profile manually or choose **Generate passenger** for one of four coherent starter profiles, then edit its fields. Set expected duration and optionally origin/destination, then select **Start session**. Active profiles are held as a snapshot; end the current session before starting another. A single session is shared by dashboard tabs. Refresh retains it, but a server restart/deployment clears it. This feature works without MSFS and does not initiate a simulator flight. No voice/AI request is made.
+Sign into the hosted dashboard to create a profile manually or choose **Generate passenger** for one of four coherent starter profiles, then edit its fields. Set expected duration and optionally origin/destination, then select **Start session**. Active profiles are held as a snapshot; end the current session before starting another. A single session is shared by dashboard tabs. Refresh retains it, but a server restart/deployment clears it. This feature works without MSFS and does not initiate a simulator flight. Starting a session makes no AI request. The separate conversation form sends a request only when you select **Send message**.
+
+## Text conversation preview
+
+Set `OPENAI_API_KEY` in the server environment to enable text replies. Optional `PAX_OPENAI_TEXT_MODEL` defaults to `gpt-4.1-mini`. See [setup and testing](docs/text-conversation.md). The key stays on the server. The last ten exchanges are held in memory, cleared at session end/restart, and sent with the profile and planned route on each request. Voice, live flight awareness and autonomous reactions remain pending.

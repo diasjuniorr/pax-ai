@@ -17,4 +17,8 @@ button:disabled { cursor: default; }
 .wide { grid-column: 1 / -1; }
 .hint { font-size: .9rem; color: #555; }
 #session-error { color: #a32020; }
+#conversation-error { color: #a32020; }
+#conversation-messages { list-style: none; padding: 0; max-height: 24rem; overflow-y: auto; }
+#conversation-messages li { padding: .75rem; margin: .5rem 0; background: #f1f4f8; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+#conversation-form button { margin-top: .75rem; }
 @media (max-width: 520px) { body { margin: 1rem; } .form-grid { grid-template-columns: 1fr; } }

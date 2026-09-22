@@ -4,13 +4,15 @@ import { bridgeMessageSchema } from '@pax/shared';
 import { TelemetryStore } from '@pax/telemetry';
 import { createHostedAccess, type HostedOptions } from './hosting';
 import { createSessionApi } from './session-api';
+import type { ConversationOptions } from './conversation';
 
 export function createTelemetryServer(log = (component: string, message: string, details = {}) => {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), component, message, ...details }));
-}, hosted?: HostedOptions) {
+}, hosted?: HostedOptions, conversationOptions: ConversationOptions = {}) {
   const access = hosted ? createHostedAccess(hosted) : undefined;
   const sessionApi = createSessionApi(req => !access || access.viewerAuthorized(req),
-    hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173']);
+    hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173'],
+    { log: (message, details) => log('OPENAI', message, details), ...conversationOptions });
   const store = new TelemetryStore();
   const http = createServer((req, res) => {
     if (req.url?.startsWith('/api/')) {
@@ -113,6 +115,7 @@ export function createTelemetryServer(log = (component: string, message: string,
   return {
     http,
     async close() {
+      sessionApi.close();
       clearInterval(timer);
       for (const client of [...bridges.clients, ...viewers.clients]) client.terminate();
       bridges.close(); viewers.close();

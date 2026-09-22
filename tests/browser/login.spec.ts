@@ -59,3 +59,56 @@ test('passenger can be generated, edited, started, restored on reload and ended'
   await page.getByRole('button', { name: 'End session', exact: true }).click();
   await expect(page.locator('#session-status')).toHaveText('No active session');
 });
+
+test('text conversation renders safely, restores on reload, reports failures and clears on session end (stubbed AI)', async ({ page }) => {
+  const origin = 'https://pax.test';
+  const login = await page.request.post('http://127.0.0.1:31847/login', {
+    headers: { Origin: origin }, form: { token: 'browser-test-dashboard-key-not-a-real-secret' }, maxRedirects: 0,
+  });
+  const cookie = login.headers()['set-cookie']!.split(';')[0]!;
+  await page.context().addCookies([{ name: '__Host-pax_session', value: cookie.split('=')[1]!, url: origin, secure: true, httpOnly: true, sameSite: 'Strict' }]);
+  const headers = { Cookie: cookie, Origin: origin };
+  const generated = await page.request.post('http://127.0.0.1:31847/api/passenger/random', { headers, data: {} });
+  const start = await page.request.post('http://127.0.0.1:31847/api/session', { headers, data: { passenger: (await generated.json()).passenger, expectedDurationMinutes: 45 } });
+  expect(start.status()).toBe(201);
+  const session = (await start.json()).session;
+  let state: { sessionId: string | null; configured: boolean; status: string; messages: { role: string; content: string }[] } = {
+    sessionId: session.id, configured: true, status: 'idle', messages: [],
+  };
+  let fail = false;
+  // Only the AI conversation HTTP seam is stubbed; session/auth/assets use the real built server.
+  await page.context().route('https://pax.test/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/conversation') {
+      if (route.request().method() === 'POST') {
+        if (fail) { await route.fulfill({ status: 502, json: { error: 'Test provider unavailable.' } }); return; }
+        const input = route.request().postDataJSON();
+        expect(input.sessionId).toBe(session.id);
+        expect(input.requestId).toMatch(/^[0-9a-f-]{36}$/);
+        state.messages.push({ role: 'user', content: input.message }, { role: 'assistant', content: 'My trip is to see family. <script>bad()</script>' });
+      }
+      await route.fulfill({ json: state }); return;
+    }
+    const response = await route.fetch({ url: `http://127.0.0.1:31847${url.pathname}${url.search}`, maxRedirects: 0 });
+    if (url.pathname === '/api/session/end' && response.ok()) state = { ...state, sessionId: null, messages: [] };
+    await route.fulfill({ response });
+  });
+  await page.goto(`${origin}/`);
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeEnabled();
+  await page.getByLabel('Message to passenger').fill('Why this trip?');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.locator('#conversation-messages')).toContainText('My trip is to see family. <script>bad()</script>');
+  await expect(page.locator('#conversation-messages script')).toHaveCount(0);
+  await expect(page.getByLabel('Message to passenger')).toHaveValue('');
+  await page.reload();
+  await expect(page.locator('#conversation-messages li')).toHaveCount(2);
+  fail = true;
+  await page.getByLabel('Message to passenger').fill('And tomorrow?');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.locator('#conversation-error')).toHaveText('Test provider unavailable.');
+  await expect(page.getByLabel('Message to passenger')).toHaveValue('And tomorrow?');
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeEnabled();
+  await page.getByRole('button', { name: 'End session', exact: true }).click();
+  await expect(page.locator('#conversation-messages li')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeDisabled();
+});

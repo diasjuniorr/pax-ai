@@ -8,9 +8,9 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Current target:** Wednesday MVP v0.1 — 2026-09-23.
 
-**Current milestones:** Milestone 1 — Windows Live Acceptance remains pending; Phase 2 passenger/profile/session foundation is implemented under the user's explicit authorization to work without the laptop.
+**Current milestones:** Milestone 1 — Windows Live Acceptance remains pending; Phase 2 passenger/profile/session and text-conversation foundations are implemented under the user's explicit authorization to work without the laptop.
 
-**Next action:** Deploy and try the new passenger/session controls in the hosted dashboard. The user explicitly authorized this Phase 2 subset before laptop acceptance: editable passenger profile, coherent random starter, minimal flight session, dashboard controls and focused tests. Voice, HOTAS and autonomous reactions are not implemented. When the laptop is available, use the existing personal ZIP for the separate live telemetry gate; these backend/dashboard changes do not change the Windows agent protocol or require repackaging it.
+**Next action:** The user is manually deploying the passenger/session controls and explicitly authorized the next laptop-independent step: text passenger conversation and its context/lifecycle foundation. Verify that feature on Render after adding the server API key. Voice, HOTAS and autonomous reactions remain pending. When the laptop is available, use the existing personal ZIP for live telemetry acceptance; the Windows protocol is unchanged.
 
 
 **Sign-in fix — 2026-09-22:** The user deployed `https://pax-ai-2zo8.onrender.com` and encountered Forbidden at sign-in. Confirmed the live response used `Referrer-Policy: no-referrer`; a native browser form reproduced `Origin: null`. Changed policy to `same-origin` while retaining strict origin validation. Browser regression now verifies the real form origin, successful login, secure cookie and dashboard access in a new tab/reload. Build and eight backend tests passed locally. Windows CI, including the browser regression, passed in [run 35679867941](https://github.com/diasjuniorr/pax-ai/actions/runs/35679867941) for fix commit `41e02e2`. The user subsequently confirmed successful sign-in and dashboard display on the live Render service.
@@ -151,6 +151,14 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 - [x] Add authenticated dashboard controls for generating/editing a passenger and starting/ending one shared session. Client/server validation, immutable active profile snapshot, session identity/timestamp, conflict detection and refresh recovery are implemented.
 - [x] Local validation: 11 backend tests and 2 browser tests passed, including generation → manual edit → start → refresh → end. Production build passed. Windows CI also passed in [run 35704140692](https://github.com/diasjuniorr/pax-ai/actions/runs/35704140692) for `9afc9b5`, including the production smoke test. Hosted deployment verification is pending: an unauthenticated `/api/session` request still returned the previous login HTML, instead of the new endpoint's JSON 401; asked the user to check Render Events.
 - Session storage is intentionally in memory: browser refresh retains it; a server restart/deployment clears it. No database, saved presets or AI generation. Random generation chooses among four coherent editable starter profiles.
+
+### Text conversation foundation — 2026-09-22
+
+- [x] Implement profile/planned-session ContextBuilder, authenticated text conversation endpoints and dashboard controls. No telemetry, inferred phase or perceived events enter this initial context.
+- [x] Bound history to ten complete exchanges, one reply in flight, recent request-ID deduplication, 30-second timeout, cancellation on session end and protection from obsolete replies. Lifecycle here is IDLE → PROCESSING → IDLE; it does not claim voice LISTENING/SPEAKING support.
+- [x] Add server-only Responses API adapter, optional API key/model configuration, 400-token output ceiling, `store: false`, token-count/latency logging without message bodies or credentials.
+- [x] Local backend verification: 18 tests pass, including provider fixtures, HTTP authorization, history bounds, conflicts, cancellation, timeout and failure recovery. Production build, compiled-host smoke and all 3 Chromium browser tests pass. The conversation browser test uses a stubbed AI endpoint with real session/auth/assets. These are synthetic checks, not live OpenAI behavior. GitHub CI and hosted/model acceptance for this change are pending.
+- [ ] Live Render/model acceptance: configure API key, ask about identity and trip, verify continuity, refresh recovery and a clean new session. See [text-conversation.md](text-conversation.md). No live API call or model-quality result claimed.
 
 ### Interaction Engine and OpenAI Realtime
 

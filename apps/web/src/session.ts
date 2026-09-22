@@ -25,6 +25,7 @@ function render(value: unknown) {
     field('flight-destination').value = next.destination ?? '';
   }
   session = next;
+  document.dispatchEvent(new CustomEvent('pax-session', { detail: session?.id ?? null }));
   available = true;
   status.textContent = session ? 'Session active' : 'No active session';
   summary.textContent = session ? `${session.passenger.name} · ${session.expectedDurationMinutes} minutes · ${session.origin ?? 'Origin not set'} → ${session.destination ?? 'Destination not set'} · Started ${new Date(session.startedAt).toLocaleTimeString()}` : '';

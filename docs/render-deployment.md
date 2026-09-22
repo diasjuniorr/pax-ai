@@ -39,3 +39,7 @@ After the fix passes CI, open the Render service and select **Manual Deploy → 
 ## Live confirmation and automatic deployment — 2026-09-22
 
 The user confirmed successful sign-in and dashboard display after deploying the sign-in fix. Automatic deployment is now requested and configured in the repository for `main` after CI passes. Applying/verifying this setting on the existing Render service remains a dashboard action because this session has no Render account connection. See [Render auto-deploy documentation](https://render.com/docs/deploys#automatic-deploys).
+
+## Optional text conversation — 2026-09-22
+
+The text preview needs `OPENAI_API_KEY` in this service's Environment settings. It is not a generated PAX access key and must be supplied from your OpenAI API project. Optional `PAX_OPENAI_TEXT_MODEL` defaults to `gpt-4.1-mini`. Save and deploy, then create a session and use **Talk to your passenger**. Missing configuration leaves the rest of PAX operational. Follow [the setup and acceptance checklist](text-conversation.md); never paste the API key into Git or chat.

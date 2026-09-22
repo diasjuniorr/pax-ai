@@ -19,4 +19,11 @@
 </div><button type="submit">Start session</button></fieldset></form>
 <button id="end-session" type="button" hidden>End session</button>
 <p id="session-error" role="alert"></p><p class="hint">One shared session for this dashboard. Refreshing keeps it; a server restart or deployment clears it. Starting a session does not start a simulator flight.</p></section>
+<section aria-labelledby="conversation-heading"><h2 id="conversation-heading">Talk to your passenger</h2>
+<p class="hint">Text conversation preview. Replies use the passenger profile and planned route; live flight awareness and voice are still to come. Keeps the last 10 exchanges until the session ends or the server restarts.</p>
+<p id="conversation-status" role="status">Loading conversation...</p>
+<ol id="conversation-messages" aria-label="Conversation"></ol>
+<form id="conversation-form"><label>Message to passenger<textarea id="conversation-input" required maxlength="2000" disabled placeholder="What brings you on this trip?"></textarea></label>
+<button id="conversation-send" type="submit" disabled>Send message</button></form>
+<p id="conversation-error" role="alert"></p></section>
 <h2>Simulator telemetry</h2><p id="server">Server: DISCONNECTED</p><p id="bridge">Bridge: DISCONNECTED</p><h2 id="sim">MSFS: DISCONNECTED</h2><p id="freshness" role="status">Waiting for telemetry</p><table><tbody id="values"></tbody></table><p>Heading is true north. Gear and flaps show actual extension.</p></main><script type="module" src="/src/main.ts"></script></body></html>

@@ -53,3 +53,12 @@ export const flightSessionSchema = flightSessionInputSchema.extend({
 });
 export type FlightSession = z.infer<typeof flightSessionSchema>;
 export const flightSessionStateSchema = z.object({ session: flightSessionSchema.nullable() });
+
+export const conversationInputSchema = z.object({
+  sessionId: z.string().uuid(), requestId: z.string().uuid(), message: shortText(2000),
+}).strict();
+export const conversationStateSchema = z.object({
+  sessionId: z.string().uuid().nullable(), configured: z.boolean(), status: z.enum(['idle', 'processing']),
+  messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })).max(20),
+});
+export type ConversationState = z.infer<typeof conversationStateSchema>;
