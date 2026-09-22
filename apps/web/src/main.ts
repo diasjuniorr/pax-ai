@@ -3,6 +3,7 @@ import './style.css';
 import './session';
 import './conversation';
 import './voice';
+import { renderFlightDebug } from './flight-debug';
 const element = (id: string) => document.getElementById(id)!;
 const fields: [keyof AircraftTelemetry, string, string, number][] = [
   ['altitudeMslFeet', 'Altitude MSL', 'ft', 0], ['altitudeAglFeet', 'AGL', 'ft', 0],
@@ -32,6 +33,7 @@ function connect() {
     lastMessage = Date.now();
     reconnectDelay = 1000;
     const state = parsed.data;
+    renderFlightDebug(state.flight);
     element('bridge').textContent = `Bridge: ${state.bridgeConnected ? 'CONNECTED' : 'DISCONNECTED'}`;
     element('sim').textContent = `MSFS: ${state.simulatorConnected ? 'CONNECTED' : 'DISCONNECTED'}`;
     element('freshness').textContent = `Telemetry: ${state.telemetryState.toUpperCase()}${state.telemetry ? ' · captured ' + new Date(state.telemetry.timestamp).toLocaleTimeString() : ''}`;
@@ -48,6 +50,7 @@ function connect() {
     element('bridge').textContent = 'Bridge: UNKNOWN';
     element('sim').textContent = 'MSFS: UNKNOWN';
     element('freshness').textContent = 'No server connection';
+    renderFlightDebug();
     clear();
     setTimeout(connect, reconnectDelay + Math.random() * 500);
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);

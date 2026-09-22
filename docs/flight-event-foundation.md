@@ -1,6 +1,6 @@
 # Flight-event detection foundation
 
-`packages/telemetry/src/flight-events.ts` implements an isolated detector and objective gate. It is deliberately not connected to live telemetry or AI reactions yet. Tests use synthetic traces and make no claim of aircraft-specific accuracy.
+`packages/telemetry/src/flight-events.ts` implements the detector and objective gate. `FlightIntelligence` now connects them to the telemetry stream and dashboard for debug validation; there is still no connection to AI reactions. Tests use synthetic traces and make no claim of aircraft-specific accuracy.
 
 The detector consumes normalized telemetry plus explicit aircraft identity, stream generation and freshness. It returns minimal WorldState (`unknown`, `ground`, `airborne`) independently of discrete HIGH-priority `TAKEOFF`/`LANDING` events. Event facts contain only AGL, IAS and vertical speed. No SimConnect structs, passenger state, network calls or model dependencies enter this module.
 
@@ -15,12 +15,16 @@ The detector consumes normalized telemetry plus explicit aircraft identity, stre
 
 These are initial fixed-wing test heuristics for nominal 1 Hz data, not universal thresholds for helicopters, gliders, high-performance aircraft or every landing. No gear-deployment/approach inference is implemented. A gear change alone will not be labeled an approach.
 
-## Before live integration
+## Current integration and next acceptance
 
-1. Extend the normalized agent contract with reliable aircraft identity and a connection/session generation, including load/aircraft-change handling. Do not substitute the passenger session ID for simulator identity.
-2. Wire freshness and explicit disconnect/loading resets into the detector. Define behavior for simulator pause/menu transitions and clock discontinuities using actual observations.
-3. Surface emitted events and gate decisions in the dashboard without enabling autonomous speech yet.
-4. Validate/tune with the stock retractable-gear aircraft chosen for Windows acceptance: taxi, takeoff, bounces, approach, landing, pause, aircraft change and reconnect.
-5. Add the minimal additional approach-related event only when supported by evidence. Then connect objective gate → perception → salience → available conversation → voice reaction.
+The optional v1 `simulation` object carries `generation` (UUID), `aircraftId` (TITLE or null), and `active`. TITLE and slew are sampled atomically with the numeric telemetry. Native Sim and Pause_EX1 notifications establish activity; unknown, stopped, paused and slew states suppress detection. Aircraft/flight load, position change, crash reset, pause/run transitions and reconnect invalidate old samples. Replacement request IDs ignore queued responses from the previous subscription, and callback guards reject disposed SimConnect connections.
+
+The backend suppresses legacy agents lacking metadata, inactive simulation, missing identity/samples, and stale/disconnected input. It republishes detector status and phase plus at most 20 current-generation event/gate records. Generation/identity changes and disconnect clear the event history; stale data resets detector evidence. Events are debug facts and never trigger an AI request. The pipeline does not require a passenger session.
+
+Native TITLE identifies the aircraft container, not a unique physical aircraft instance; generation separates load/reconnect boundaries, including reloading the same title. Neither the title nor generation proves that every MSFS menu/pause behavior has been covered. Validate the actual callback ordering tonight.
+
+1. Use the new personal runtime and verify identity, generation and running/paused/slew behavior using [tonight-test.md](tonight-test.md).
+2. Validate/tune with the chosen stock fixed-wing aircraft: taxi, takeoff, bounces, approach, landing, pause, aircraft change and reconnect.
+3. Add the minimal additional approach-related event only when supported by evidence. Then connect objective gate → perception → salience → available conversation → voice reaction.
 
 Tests currently cover valid transitions, initial airborne loading, brief ground-contact changes, low-speed glitches, stale/duplicate samples, identity/generation changes, gaps, rewind, teleport, snapshot isolation and gate cooldown/freshness.

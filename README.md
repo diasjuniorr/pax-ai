@@ -92,4 +92,4 @@ Set `OPENAI_API_KEY` in the server environment to enable text replies. Optional 
 
 Use **Voice preview → Connect voice**, allow the microphone, then hold/release **Hold to talk**. The server uses `OPENAI_API_KEY` and optional `PAX_OPENAI_REALTIME_MODEL` (default `gpt-realtime`). See [voice setup, limits and acceptance](docs/voice-preview.md). This preview requires a visible browser tab and does not replace the pending HOTAS integration.
 
-Takeoff/landing detection and an objective event gate are implemented as isolated, synthetically tested logic. They are not connected to live telemetry or AI yet; see [event integration prerequisites](docs/flight-event-foundation.md).
+Takeoff/landing detection and the objective gate now consume fresh active telemetry with aircraft identity/generation from the updated agent. The **Flight events · validation** panel shows results; no event triggers AI yet. Thresholds and native callback behavior still need [tonight’s live test](docs/tonight-test.md). See [event boundaries](docs/flight-event-foundation.md).

@@ -22,7 +22,7 @@ The definitive schemas live in `packages/shared/src/index.ts`. Both message type
 
 ## Official SimVar mapping
 
-Each definition requests `FLOAT64`, including the numeric boolean, so the sequential packed C# structure has one consistent field representation. SimConnect converts compatible requested units. Field order in the definition must match the raw structure exactly.
+Numeric definitions request `FLOAT64`, including booleans. The current packed C# structure has twelve doubles followed by a `STRING256` TITLE field; the runtime check verifies 352 bytes total and the string at byte 96. SimConnect converts compatible requested units. Field order in the definition must match the raw structure exactly.
 
 | Normalized field | Official SimVar | Requested unit | Meaning/conversion |
 |---|---|---|---|
@@ -212,3 +212,11 @@ This implements only the profile/planned-session/bounded-conversation subset of 
 The user authorized laptop-independent voice/event work. `voice.ts` on the server negotiates Realtime WebRTC calls with the existing context builder and server-only API key. The browser owns media and an explicit, separately testable PTT lifecycle; the server owns single-call leases, text/voice exclusion and hangup. Voice history is bounded by provider truncation and ends on disconnect. It is separate from the text transcript in this preview. No Windows-agent or HOTAS implementation is claimed. See [voice boundaries](voice-preview.md).
 
 The telemetry package now exports an isolated `FlightEventDetector`, minimal `FlightWorldState`, normalized `FlightEvent` and separate `FlightEventGate`. No server code consumes it yet. Live wiring requires aircraft identity/stream generation not present in the current native protocol. Synthetic threshold tests precede the required stock-aircraft acceptance and tuning. See [detector boundaries](flight-event-foundation.md). Perception, salience and autonomous voice requests remain pending.
+
+## Native continuity and event debug integration — 2026-09-22
+
+This supersedes the isolated-detector status above. The bridge's optional v1 `simulation` field carries UUID generation, nullable aircraft TITLE and active state. The metadata and telemetry are serialized under the same lock. TITLE/IS SLEW ACTIVE share the numeric sample's definition. Sim/Pause_EX1 notifications establish activity; unknown state fails closed. Load/position/crash-reset notifications and run/pause transitions clear samples and replace request IDs; callbacks check both the owning SimConnect instance and active request. Reconnect resets native state. TITLE changes and slew transitions also rotate generation. No filesystem paths are transmitted.
+
+`FlightIntelligence` consumes the normalized store at publication time, resets on invalid continuity/freshness, and emits bounded debug state through the existing authenticated telemetry WebSocket. The browser shows status, phase, identity, generation and twenty recent current-generation event/gate records using plain text. It is independent of passenger sessions, model context and voice. Old v1 senders without the optional metadata remain display-compatible and show an update-required detector status.
+
+Primary SDK references: [system event subscriptions](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/general/simconnect_subscribetosystemevent/), [managed data layouts](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/programming-simconnect-clients-using-managed-code/), [slew SimVar](https://docs.flightsimulator.com/msfs2024/html/6_Programming_APIs/SimVars/Aircraft_SimVars/Aircraft_Misc_Variables.htm). SDK declarations and CI compilation cannot establish actual callback timing; [live acceptance](tonight-test.md) remains necessary.

@@ -25,6 +25,10 @@ User reported Windows 11 Pro, OS build 26200.9457, on the same Wi-Fi as the Mac.
 
 The personal ZIP now supplies the matching app-local client DLLs. Public redistribution remains a separate gate. Proceed with the personal package runtime check on the laptop; no SDK installation is needed. Validate any missing Visual C++ runtime before attempting live flight.
 
+## Tonight’s continuity/event validation
+
+Use the updated identity-capable package named in [windows-package.md](windows-package.md), and follow [the focused tonight checklist](tonight-test.md). The old package can display telemetry but cannot exercise the event detector. All live checks remain pending.
+
 ## What to do on the gaming laptop now
 
 Use the package runtime check before adding prerequisites. Record Windows version (`winver`), MSFS 2024 version and existing controller drivers. Optionally confirm the existing Framework runtime using built-in Windows PowerShell (read-only, no administrator privileges):

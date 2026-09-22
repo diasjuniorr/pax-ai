@@ -10,7 +10,7 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Current milestones:** Milestone 1 — Windows Live Acceptance remains pending; Phase 2 passenger/profile/session and text-conversation foundations are implemented under the user's explicit authorization to work without the laptop.
 
-**Next action:** Deploy and test the browser voice preview with a microphone/headphones on the Mac; use the same server API key. The user explicitly authorized voice integration and synthetic event-detection work before laptop acceptance. Browser PTT and isolated takeoff/landing logic are implemented, with live voice/MSFS verification still pending. HOTAS, live detector wiring/aircraft identity, approach events and autonomous reactions remain unfinished. The Windows protocol/package is unchanged.
+**Next action:** Build and package the new Windows agent, then tonight validate real telemetry and the **Flight events · validation** panel on the gaming laptop. Aircraft title, simulation generation and active-state metadata are now implemented; the backend detector is connected to telemetry for debug display only. Local validation passes; native build/runtime checks and the updated personal ZIP are being prepared. HOTAS, approach events, live threshold tuning and autonomous reactions remain pending. Browser voice can be tested separately on the Mac.
 
 
 **Sign-in fix — 2026-09-22:** The user deployed `https://pax-ai-2zo8.onrender.com` and encountered Forbidden at sign-in. Confirmed the live response used `Referrer-Policy: no-referrer`; a native browser form reproduced `Origin: null`. Changed policy to `same-origin` while retaining strict origin validation. Browser regression now verifies the real form origin, successful login, secure cookie and dashboard access in a new tab/reload. Build and eight backend tests passed locally. Windows CI, including the browser regression, passed in [run 35679867941](https://github.com/diasjuniorr/pax-ai/actions/runs/35679867941) for fix commit `41e02e2`. The user subsequently confirmed successful sign-in and dashboard display on the live Render service.
@@ -168,6 +168,16 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 - [x] Final local verification: 32 backend/logic tests and 4 Chromium browser tests passed; production build and compiled-host smoke passed. Browser voice uses test-only microphone/WebRTC/provider fixtures, not real media/API calls. Windows CI also passed for `fdc6303` in [run 35730886516](https://github.com/diasjuniorr/pax-ai/actions/runs/35730886516), including C# build/runtime checks. Deployed voice/media acceptance remains pending.
 - [ ] Live voice acceptance on Render: [voice preview guide](voice-preview.md). Real microphone transport, audible reply, profile consistency, teardown and network recovery remain unverified.
 - [ ] Live event integration and aircraft tuning: [detector boundaries and next steps](flight-event-foundation.md).
+
+### Native continuity and live event pipeline — 2026-09-22
+
+- [x] Extend v1 with optional validated simulation metadata. Older agents retain telemetry display but are explicitly excluded from event detection.
+- [~] Read `TITLE` and `IS SLEW ACTIVE` alongside each native sample. Track Sim/Pause_EX1/aircraft-load/flight-load/position/crash-reset boundaries, rotate generation and reject obsolete request/connection callbacks. Native compilation, struct-layout/runtime validation and real MSFS callbacks await verification for this change.
+- [x] Wire fresh active snapshots through detector and objective gate, independent of passenger session/AI. Publish bounded current-generation event history, status, identity and phase; log EVENT/GATE decisions and detector status changes.
+- [x] Add the dashboard event panel, disconnect clearing, legacy-agent guidance and synthetic browser coverage.
+- [x] Local validation: 38 backend/logic tests, 5 browser tests, production build and hosted smoke passed. Personal-package vendor reuse reproduces the existing ZIP byte-for-byte and rejects an altered DLL before packaging. No live MSFS/voice result claimed.
+- [ ] Complete Windows CI and assemble the updated personal runtime; record the commit/hash in [windows-package.md](windows-package.md).
+- [ ] Execute [tonight's test](tonight-test.md), record observed event/reset behavior and tune failures before enabling autonomous speech.
 
 ### Interaction Engine and OpenAI Realtime
 

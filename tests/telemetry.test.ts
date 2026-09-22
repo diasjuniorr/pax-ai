@@ -122,3 +122,25 @@ test('new viewers get latest state; duplicate and browser-origin producers are r
   bridge.close(); await gone;
   await rejected('http://127.0.0.1:5173');
 });
+
+test('native continuity metadata reaches viewers and drives debug events without a passenger session', async t => {
+  const { viewer, connectBridge, url, sockets } = await setup(t);
+  const bridge = await connectBridge();
+  const generation = '00000000-0000-4000-8000-000000000001';
+  for (let i = 0; i < 6; i++) {
+    const next = waitFor(viewer, s => s.telemetry?.timestamp === 10000 + i * 1000);
+    bridge.send(JSON.stringify({ ...frame({ ...sample, timestamp: 10000 + i * 1000,
+      onGround: i < 3, altitudeAglFeet: i < 3 ? 0 : (i - 2) * 10, verticalSpeedFpm: i < 3 ? 0 : 500 }),
+      simulation: { generation, aircraftId: 'Integration aircraft', active: true } }));
+    await next;
+  }
+  const late = new WebSocket(`${url}/telemetry`); sockets.push(late);
+  const detected = await waitFor(late, s => s.flight?.events.length === 1);
+  assert.equal(detected.flight!.events[0]!.event.type, 'TAKEOFF');
+  assert.equal(detected.flight!.aircraftId, 'Integration aircraft');
+  assert.equal(detected.flight!.phase, 'airborne');
+  const paused = waitFor(viewer, s => s.flight?.status === 'inactive');
+  bridge.send(JSON.stringify({ ...frame(), simulation: { generation: '00000000-0000-4000-8000-000000000002', aircraftId: null, active: false } }));
+  const reset = await paused;
+  assert.equal(reset.flight!.events.length, 0); assert.equal(reset.flight!.phase, 'unknown');
+});

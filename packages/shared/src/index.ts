@@ -17,10 +17,31 @@ export const aircraftTelemetrySchema = z.object({
 });
 export type AircraftTelemetry = z.infer<typeof aircraftTelemetrySchema>;
 
+// Optional on v1 for older agents; absent metadata disables event detection.
+export const simulationContextSchema = z.object({
+  generation: z.string().uuid(), aircraftId: z.string().trim().min(1).max(256).nullable(),
+  active: z.boolean(),
+});
+export type SimulationContext = z.infer<typeof simulationContextSchema>;
+export const flightEventSchema = z.object({
+  type: z.enum(['TAKEOFF', 'LANDING']), priority: z.literal('HIGH'), timestamp: finite.int().nonnegative(),
+  source: z.literal('telemetry'), generation: z.string().min(1).max(128), aircraftId: z.string().min(1).max(256),
+  facts: z.object({ altitudeAglFeet: finite, indicatedAirspeedKnots: finite, verticalSpeedFpm: finite }),
+});
+export type FlightEvent = z.infer<typeof flightEventSchema>;
+export const flightDebugSchema = z.object({
+  status: z.enum(['disconnected', 'legacy-agent', 'inactive', 'waiting', 'stale', 'tracking']),
+  phase: z.enum(['unknown', 'ground', 'airborne']),
+  aircraftId: z.string().nullable(), generation: z.string().nullable(),
+  events: z.array(z.object({ event: flightEventSchema, forward: z.boolean(), reason: z.enum(['accepted', 'stale', 'cooldown']) })).max(20),
+});
+export type FlightDebug = z.infer<typeof flightDebugSchema>;
+
 // A full snapshot doubles as a heartbeat. No telemetry replay on a dead SimConnect session.
 export const bridgeMessageSchema = z.object({
   version: z.literal(1), type: z.literal('bridgeSnapshot'),
   simulatorConnected: z.boolean(),
+  simulation: simulationContextSchema.nullable().optional(),
   telemetry: aircraftTelemetrySchema.nullable(),
 }).refine(m => m.simulatorConnected || m.telemetry === null,
   'Disconnected snapshots must not contain telemetry');
@@ -31,6 +52,8 @@ export const serverSnapshotSchema = z.object({
   bridgeConnected: z.boolean(), simulatorConnected: z.boolean(),
   telemetryState: z.enum(['waiting', 'live', 'stale']),
   lastReceivedAt: finite.nullable(), telemetry: aircraftTelemetrySchema.nullable(),
+  simulation: simulationContextSchema.nullable().optional(),
+  flight: flightDebugSchema.optional(),
 });
 export type ServerSnapshot = z.infer<typeof serverSnapshotSchema>;
 

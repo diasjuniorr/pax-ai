@@ -1,10 +1,5 @@
-import type { AircraftTelemetry } from '@pax/shared';
-
-export type FlightEvent = {
-  type: 'TAKEOFF' | 'LANDING'; priority: 'HIGH'; timestamp: number;
-  source: 'telemetry'; generation: string; aircraftId: string;
-  facts: { altitudeAglFeet: number; indicatedAirspeedKnots: number; verticalSpeedFpm: number };
-};
+import type { AircraftTelemetry, FlightEvent } from '@pax/shared';
+export type { FlightEvent } from '@pax/shared';
 export type DetectionFrame = {
   generation: string; aircraftId: string; fresh: boolean; telemetry: AircraftTelemetry | null;
 };
@@ -14,7 +9,7 @@ export type FlightWorldState = {
 };
 
 // Initial fixed-wing heuristics for 1 Hz samples. Synthetic verification only:
-// NOT yet wired to the bridge; live identity/generation and aircraft tuning are required.
+// Wired through FlightIntelligence; aircraft-specific live tuning is still required.
 export class FlightEventDetector {
   private world: FlightWorldState = { phase: 'unknown', fresh: false, generation: null, aircraftId: null };
   private samples: AircraftTelemetry[] = [];
@@ -79,6 +74,7 @@ export class FlightEventDetector {
 export class FlightEventGate {
   private identity = '';
   private last = new Map<FlightEvent['type'], number>();
+  reset() { this.identity = ''; this.last.clear(); }
   accept(event: FlightEvent, sampleTimestamp: number): { forward: boolean; reason: 'accepted' | 'stale' | 'cooldown' } {
     const identity = JSON.stringify([event.generation, event.aircraftId]);
     if (identity !== this.identity) { this.identity = identity; this.last.clear(); }

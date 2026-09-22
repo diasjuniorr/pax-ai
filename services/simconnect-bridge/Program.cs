@@ -56,6 +56,8 @@ internal static class Program
         var native = LoadLibraryEx(Path.Combine(directory, "SimConnect.dll"), IntPtr.Zero, 8);
         if (native == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
         FreeLibrary(native);
+        if (Marshal.SizeOf(typeof(RawTelemetry)) != 352 || Marshal.OffsetOf(typeof(RawTelemetry), "Title").ToInt32() != 96)
+            throw new InvalidOperationException("Unexpected telemetry interop layout: expected 12 doubles followed by STRING256");
         Log("BRIDGE", "Runtime dependencies loaded successfully (x64, app-local SimConnect). Live MSFS connection not tested.");
     }
 
@@ -99,7 +101,8 @@ internal sealed class BridgeWindow : Control
     private readonly BridgeConfiguration configuration;
     private const int SimMessage = 0x0402;
     private enum DefinitionId : uint { Telemetry = 1 }
-    private enum RequestId : uint { Telemetry = 2, Health = 3 }
+    private enum RequestId : uint { Health = 3 }
+    private enum EventId : uint { Sim = 10, Pause = 11, AircraftLoaded = 12, FlightLoaded = 13, PositionChanged = 14, CrashReset = 15 }
     private readonly object gate = new object();
     private readonly CancellationTokenSource stop = new CancellationTokenSource();
     private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 2000 };
@@ -107,6 +110,13 @@ internal sealed class BridgeWindow : Control
     private SimConnect sim;
     private bool connected;
     private object telemetry;
+    private string generation;
+    private string aircraftId;
+    private bool? running, paused;
+    private bool? slew;
+    private uint sampleRequest = 100;
+    private bool subscribed;
+    private bool sampleRequestActive;
     private DateTime lastResponse;
     private DateTime nextAttempt;
     private DateTime nextWaitLog;
@@ -136,34 +146,63 @@ internal sealed class BridgeWindow : Control
                 return;
             }
             if (DateTime.UtcNow < nextAttempt) return;
-            sim = new SimConnect("Pax telemetry bridge", Handle, SimMessage, null, 0);
+            var connection = new SimConnect("Pax telemetry bridge", Handle, SimMessage, null, 0);
+            sim = connection;
             lastResponse = DateTime.UtcNow;
             sim.OnRecvOpen += (sender, data) => {
-                lock (gate) connected = true;
+                if (!ReferenceEquals(sim, connection)) return;
+                lock (gate) { connected = true; generation = Guid.NewGuid().ToString(); }
                 lastResponse = DateTime.UtcNow;
                 Program.Log("SIMCONNECT", "Connected to MSFS");
                 Subscribe();
             };
-            sim.OnRecvQuit += (sender, data) => Disconnect("Simulator quit");
-            sim.OnRecvException += (sender, data) => Disconnect(
-                "SDK exception " + data.dwException + " sendId=" + data.dwSendID + " index=" + data.dwIndex);
-            sim.OnRecvSystemState += (sender, data) => { lastResponse = DateTime.UtcNow; };
+            sim.OnRecvQuit += (sender, data) => { if (ReferenceEquals(sim, connection)) Disconnect("Simulator quit"); };
+            sim.OnRecvException += (sender, data) => {
+                if (ReferenceEquals(sim, connection)) Disconnect("SDK exception " + data.dwException + " sendId=" + data.dwSendID + " index=" + data.dwIndex);
+            };
+            sim.OnRecvSystemState += (sender, data) => {
+                if (!ReferenceEquals(sim, connection)) return;
+                lastResponse = DateTime.UtcNow;
+                // Used for health only; ordered subscribed events own simulation state.
+            };
+            sim.OnRecvEvent += (sender, data) => {
+                if (!ReferenceEquals(sim, connection)) return;
+                if (data.uEventID == (uint)EventId.Sim && running != (data.dwData != 0)) {
+                    RestartSamples("Simulation running state changed", runningState: data.dwData != 0);
+                } else if (data.uEventID == (uint)EventId.Pause && paused != (data.dwData != 0)) {
+                    RestartSamples("Pause state changed", pauseState: data.dwData != 0);
+                } else if (IsLoadEvent(data.uEventID)) RestartSamples("Flight continuity changed");
+            };
+            sim.OnRecvEventFilename += (sender, data) => {
+                if (ReferenceEquals(sim, connection) && IsLoadEvent(data.uEventID)) RestartSamples("Aircraft or flight loaded");
+            };
             sim.OnRecvSimobjectData += (sender, data) => {
-                if (data.dwRequestID != (uint)RequestId.Telemetry) return;
+                if (!ReferenceEquals(sim, connection) || data.dwRequestID != sampleRequest) return;
                 lastResponse = DateTime.UtcNow;
                 var raw = (RawTelemetry)data.dwData[0];
-                if (telemetry == null) Program.Log("SIMCONNECT", "Telemetry subscription active: first sample received");
-                lock (gate) telemetry = new {
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                    latitude = raw.Latitude, longitude = raw.Longitude,
-                    altitudeMslFeet = raw.Altitude, altitudeAglFeet = raw.Agl,
-                    indicatedAirspeedKnots = raw.Airspeed, verticalSpeedFpm = raw.VerticalSpeed,
-                    headingTrueDegrees = (raw.Heading % 360 + 360) % 360,
-                    onGround = raw.OnGround != 0,
-                    gearExtensionPercent = raw.Gear,
-                    flapsLeftExtensionPercent = raw.FlapsLeft * 100,
-                    flapsRightExtensionPercent = raw.FlapsRight * 100
-                };
+                var title = (raw.Title ?? "").Trim();
+                if (title.Length == 0) title = null;
+                lock (gate) {
+                    if (aircraftId != title || slew != (raw.Slew != 0)) {
+                        generation = Guid.NewGuid().ToString();
+                        aircraftId = title;
+                        slew = raw.Slew != 0;
+                        telemetry = null;
+                        Program.Log("SIMCONNECT", "Aircraft identity or slew state changed");
+                    }
+                    if (telemetry == null) Program.Log("SIMCONNECT", "Telemetry subscription active: first sample received");
+                    telemetry = new {
+                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                        latitude = raw.Latitude, longitude = raw.Longitude,
+                        altitudeMslFeet = raw.Altitude, altitudeAglFeet = raw.Agl,
+                        indicatedAirspeedKnots = raw.Airspeed, verticalSpeedFpm = raw.VerticalSpeed,
+                        headingTrueDegrees = (raw.Heading % 360 + 360) % 360,
+                        onGround = raw.OnGround != 0,
+                        gearExtensionPercent = raw.Gear,
+                        flapsLeftExtensionPercent = raw.FlapsLeft * 100,
+                        flapsRightExtensionPercent = raw.FlapsRight * 100
+                    };
+                }
             };
         }
         catch (COMException ex) { Disconnect("Waiting for MSFS: " + ex.Message); }
@@ -171,7 +210,7 @@ internal sealed class BridgeWindow : Control
 
     private void Subscribe()
     {
-        // Field order and FLOAT64 layout must exactly match RawTelemetry below.
+        // Field order and FLOAT64/STRING256 layout must exactly match RawTelemetry below.
         Add("PLANE LATITUDE", "degrees");
         Add("PLANE LONGITUDE", "degrees");
         Add("PLANE ALTITUDE", "feet");
@@ -183,10 +222,40 @@ internal sealed class BridgeWindow : Control
         Add("GEAR TOTAL PCT EXTENDED", "percent");
         Add("TRAILING EDGE FLAPS LEFT PERCENT", "percent over 100");
         Add("TRAILING EDGE FLAPS RIGHT PERCENT", "percent over 100");
+        Add("IS SLEW ACTIVE", "bool");
+        sim.AddToDataDefinition(DefinitionId.Telemetry, "TITLE", "", SIMCONNECT_DATATYPE.STRING256, 0, SimConnect.SIMCONNECT_UNUSED);
         sim.RegisterDataDefineStruct<RawTelemetry>(DefinitionId.Telemetry);
-        sim.RequestDataOnSimObject(RequestId.Telemetry, DefinitionId.Telemetry, SimConnect.SIMCONNECT_OBJECT_ID_USER,
-            SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+        subscribed = true;
+        RestartSamples("SimConnect subscription started");
+        sim.SubscribeToSystemEvent(EventId.Sim, "Sim");
+        sim.SubscribeToSystemEvent(EventId.Pause, "Pause_EX1");
+        sim.SubscribeToSystemEvent(EventId.AircraftLoaded, "AircraftLoaded");
+        sim.SubscribeToSystemEvent(EventId.FlightLoaded, "FlightLoaded");
+        sim.SubscribeToSystemEvent(EventId.PositionChanged, "PositionChanged");
+        sim.SubscribeToSystemEvent(EventId.CrashReset, "CrashReset");
         Program.Log("SIMCONNECT", "Telemetry subscription requested (1 Hz)");
+    }
+
+    private static bool IsLoadEvent(uint id) => id == (uint)EventId.AircraftLoaded || id == (uint)EventId.FlightLoaded ||
+        id == (uint)EventId.PositionChanged || id == (uint)EventId.CrashReset;
+
+    private void RestartSamples(string reason, bool? runningState = null, bool? pauseState = null)
+    {
+        lock (gate) {
+            if (runningState.HasValue) running = runningState;
+            if (pauseState.HasValue) paused = pauseState;
+            generation = Guid.NewGuid().ToString(); telemetry = null; aircraftId = null; slew = null;
+        }
+        if (subscribed && sim != null) {
+            if (sampleRequestActive)
+                sim.RequestDataOnSimObject((RequestId)sampleRequest, DefinitionId.Telemetry, SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                    SIMCONNECT_PERIOD.NEVER, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+            sampleRequest++;
+            sim.RequestDataOnSimObject((RequestId)sampleRequest, DefinitionId.Telemetry, SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+            sampleRequestActive = true;
+        }
+        Program.Log("SIMCONNECT", reason);
     }
 
     private void Add(string name, string units) => sim.AddToDataDefinition(
@@ -207,7 +276,12 @@ internal sealed class BridgeWindow : Control
         var old = sim;
         sim = null;
         bool wasConnected;
-        lock (gate) { wasConnected = connected; connected = false; telemetry = null; }
+        lock (gate) {
+            wasConnected = connected; connected = false; telemetry = null;
+            generation = null; aircraftId = null; running = paused = slew = null;
+        }
+        subscribed = false;
+        sampleRequestActive = false;
         try { old?.Dispose(); } catch (COMException) { }
         nextAttempt = DateTime.UtcNow.AddSeconds(2);
         if (wasConnected || DateTime.UtcNow >= nextWaitLog)
@@ -220,7 +294,8 @@ internal sealed class BridgeWindow : Control
     private string Snapshot()
     {
         lock (gate) return new JavaScriptSerializer().Serialize(new {
-            version = 1, type = "bridgeSnapshot", simulatorConnected = connected, telemetry
+            version = 1, type = "bridgeSnapshot", simulatorConnected = connected, telemetry,
+            simulation = connected ? new { generation, aircraftId, active = running == true && paused == false && slew == false } : null
         });
     }
 
@@ -308,9 +383,11 @@ internal sealed class BridgeWindow : Control
     }
 }
 
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
+[StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
 internal struct RawTelemetry
 {
     public double Latitude, Longitude, Altitude, Agl, Airspeed, VerticalSpeed, Heading,
-        OnGround, Gear, FlapsLeft, FlapsRight;
+        OnGround, Gear, FlapsLeft, FlapsRight, Slew;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+    public string Title;
 }

@@ -35,4 +35,8 @@
 <audio id="voice-audio" autoplay></audio>
 <p id="voice-error" role="alert"></p><p id="voice-transcript" aria-label="Latest spoken reply"></p><p id="voice-usage" class="hint"></p>
 <p class="hint">Voice uses your active passenger and planned flight. Voice history is separate from text and resets when disconnected. No live flight awareness yet. Connecting and speaking use the OpenAI API.</p></section>
+<section aria-labelledby="flight-events-heading"><h2 id="flight-events-heading">Flight events · validation</h2>
+<p id="detector-status" role="status">Waiting for detector state</p><p id="aircraft-identity">Aircraft: —</p><p id="flight-generation">Generation: —</p>
+<ol id="flight-events" aria-label="Detected flight events"></ol>
+<p class="hint">Recent takeoff/landing detections for the current aircraft generation. Initial state is learned silently; pause, load and reconnect reset the evidence. These events do not trigger passenger speech yet. Fixed-wing thresholds still need live validation.</p></section>
 <h2>Simulator telemetry</h2><p id="server">Server: DISCONNECTED</p><p id="bridge">Bridge: DISCONNECTED</p><h2 id="sim">MSFS: DISCONNECTED</h2><p id="freshness" role="status">Waiting for telemetry</p><table><tbody id="values"></tbody></table><p>Heading is true north. Gear and flaps show actual extension.</p></main><script type="module" src="/src/main.ts"></script></body></html>
