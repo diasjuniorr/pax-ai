@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pax telemetry debug</title></head>
 <body><main><h1>Pax · Telemetry debug</h1><section aria-labelledby="passenger-heading"><h2 id="passenger-heading">Passenger and flight</h2>
-<p>Create an editable passenger yourself or use a starter profile. Voice conversation is coming next.</p>
+<p>Create an editable passenger yourself or use a starter profile, then try text or voice conversation.</p>
 <p id="session-status" role="status">Loading session...</p><p id="session-summary"></p>
 <form id="session-form"><fieldset id="session-fields"><legend>Passenger profile</legend>
 <button id="random-passenger" type="button">Generate passenger</button>
@@ -26,4 +26,13 @@
 <form id="conversation-form"><label>Message to passenger<textarea id="conversation-input" required maxlength="2000" disabled placeholder="What brings you on this trip?"></textarea></label>
 <button id="conversation-send" type="submit" disabled>Send message</button></form>
 <p id="conversation-error" role="alert"></p></section>
+<section aria-labelledby="voice-heading"><h2 id="voice-heading">Voice preview</h2>
+<p class="hint">Connect, allow microphone access, then hold the button to speak and release for a reply. The passenger voice is AI-generated. Use headphones. This browser preview needs a visible tab; HOTAS control is still pending.</p>
+<p id="voice-status" role="status">Checking voice availability…</p>
+<button id="voice-connect" type="button" disabled>Connect voice</button>
+<button id="voice-disconnect" type="button" disabled>Disconnect voice</button>
+<button id="voice-talk" type="button" disabled aria-pressed="false">Hold to talk</button>
+<audio id="voice-audio" autoplay></audio>
+<p id="voice-error" role="alert"></p><p id="voice-transcript" aria-label="Latest spoken reply"></p><p id="voice-usage" class="hint"></p>
+<p class="hint">Voice uses your active passenger and planned flight. Voice history is separate from text and resets when disconnected. No live flight awareness yet. Connecting and speaking use the OpenAI API.</p></section>
 <h2>Simulator telemetry</h2><p id="server">Server: DISCONNECTED</p><p id="bridge">Bridge: DISCONNECTED</p><h2 id="sim">MSFS: DISCONNECTED</h2><p id="freshness" role="status">Waiting for telemetry</p><table><tbody id="values"></tbody></table><p>Heading is true north. Gear and flaps show actual extension.</p></main><script type="module" src="/src/main.ts"></script></body></html>

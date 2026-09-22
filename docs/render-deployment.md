@@ -43,3 +43,7 @@ The user confirmed successful sign-in and dashboard display after deploying the 
 ## Optional text conversation — 2026-09-22
 
 The text preview needs `OPENAI_API_KEY` in this service's Environment settings. It is not a generated PAX access key and must be supplied from your OpenAI API project. Optional `PAX_OPENAI_TEXT_MODEL` defaults to `gpt-4.1-mini`. Save and deploy, then create a session and use **Talk to your passenger**. Missing configuration leaves the rest of PAX operational. Follow [the setup and acceptance checklist](text-conversation.md); never paste the API key into Git or chat.
+
+## Browser voice preview — 2026-09-22
+
+Voice uses the existing `OPENAI_API_KEY` and optional `PAX_OPENAI_REALTIME_MODEL` (default `gpt-realtime`). Deploy the voice-preview feature, create a session and select **Connect voice**. HTTPS is required for microphone access; audio travels directly between the browser and OpenAI using WebRTC. No additional Render service, database or Windows package is needed. See [voice testing and limits](voice-preview.md). Live model/audio acceptance is not established by CI fixtures.

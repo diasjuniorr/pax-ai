@@ -1,6 +1,7 @@
 import type { BridgeMessage, ServerSnapshot } from '@pax/shared';
+export { FlightEventDetector, FlightEventGate, type FlightEvent, type DetectionFrame, type FlightWorldState } from './flight-events';
 
-// Transport-independent latest-value store. Event detection belongs here in a later milestone.
+// Transport-independent latest-value store. Flight event detection is a separate module.
 export class TelemetryStore {
   private state: ServerSnapshot = {
     version: 1, type: 'snapshot', bridgeConnected: false, simulatorConnected: false,

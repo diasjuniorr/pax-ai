@@ -10,7 +10,7 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Current milestones:** Milestone 1 — Windows Live Acceptance remains pending; Phase 2 passenger/profile/session and text-conversation foundations are implemented under the user's explicit authorization to work without the laptop.
 
-**Next action:** The user is manually deploying the passenger/session controls and explicitly authorized the next laptop-independent step: text passenger conversation and its context/lifecycle foundation. Verify that feature on Render after adding the server API key. Voice, HOTAS and autonomous reactions remain pending. When the laptop is available, use the existing personal ZIP for live telemetry acceptance; the Windows protocol is unchanged.
+**Next action:** Deploy and test the browser voice preview with a microphone/headphones on the Mac; use the same server API key. The user explicitly authorized voice integration and synthetic event-detection work before laptop acceptance. Browser PTT and isolated takeoff/landing logic are implemented, with live voice/MSFS verification still pending. HOTAS, live detector wiring/aircraft identity, approach events and autonomous reactions remain unfinished. The Windows protocol/package is unchanged.
 
 
 **Sign-in fix — 2026-09-22:** The user deployed `https://pax-ai-2zo8.onrender.com` and encountered Forbidden at sign-in. Confirmed the live response used `Referrer-Policy: no-referrer`; a native browser form reproduced `Origin: null`. Changed policy to `same-origin` while retaining strict origin validation. Browser regression now verifies the real form origin, successful login, secure cookie and dashboard access in a new tab/reload. Build and eight backend tests passed locally. Windows CI, including the browser regression, passed in [run 35679867941](https://github.com/diasjuniorr/pax-ai/actions/runs/35679867941) for fix commit `41e02e2`. The user subsequently confirmed successful sign-in and dashboard display on the live Render service.
@@ -159,6 +159,15 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 - [x] Add server-only Responses API adapter, optional API key/model configuration, 400-token output ceiling, `store: false`, token-count/latency logging without message bodies or credentials.
 - [x] Local backend verification: 18 tests pass, including provider fixtures, HTTP authorization, history bounds, conflicts, cancellation, timeout and failure recovery. Production build, compiled-host smoke and all 3 Chromium browser tests pass. The conversation browser test uses a stubbed AI endpoint with real session/auth/assets. These are synthetic checks, not live OpenAI behavior. Windows CI also passed for `8a3893c` in [run 35711169743](https://github.com/diasjuniorr/pax-ai/actions/runs/35711169743), including the C# package checks. Hosted deployment and live model acceptance remain pending.
 - [ ] Live Render/model acceptance: configure API key, ask about identity and trip, verify continuity, refresh recovery and a clean new session. See [text-conversation.md](text-conversation.md). No live API call or model-quality result claimed.
+
+### Browser voice and event foundations — 2026-09-22
+
+- [x] Implement server-authenticated WebRTC negotiation using the shared passenger context, browser hold-to-talk, microphone gating, audio playback, latest transcript/usage display, and IDLE → LISTENING → PROCESSING → SPEAKING → IDLE lifecycle.
+- [x] Add text/voice exclusivity, one voice owner, short heartbeat leases, session-end/late-negotiation cleanup, explicit reconnect, timeouts and bounded provider context. Voice history is separate from text in this preview.
+- [x] Implement isolated WorldState, TAKEOFF/LANDING detector and objective cooldown/freshness gate with synthetic traces. Live wiring awaits reliable simulator identity/generation; no autonomous event path is enabled.
+- [x] Final local verification: 32 backend/logic tests and 4 Chromium browser tests passed; production build and compiled-host smoke passed. Browser voice uses test-only microphone/WebRTC/provider fixtures, not real media/API calls. Windows CI for this change is pending.
+- [ ] Live voice acceptance on Render: [voice preview guide](voice-preview.md). Real microphone transport, audible reply, profile consistency, teardown and network recovery remain unverified.
+- [ ] Live event integration and aircraft tuning: [detector boundaries and next steps](flight-event-foundation.md).
 
 ### Interaction Engine and OpenAI Realtime
 

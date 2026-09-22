@@ -9,9 +9,9 @@ let state: ConversationState | undefined;
 let sending = false, refreshing = false, available = false, revision = 0;
 let rendered = '';
 function controls() {
-  input.disabled = send.disabled = !available || !sessionId || !state?.configured || sending || state?.status === 'processing';
+  input.disabled = send.disabled = !available || !sessionId || !state?.configured || !!state.voiceActive || sending || state?.status === 'processing';
   status.textContent = !available ? 'Conversation connection unavailable; retrying' : !sessionId ? 'Start a flight session to chat.'
-    : !state?.configured ? 'Text conversation needs OPENAI_API_KEY in the server environment.'
+    : state?.voiceActive ? 'Disconnect voice to use text conversation.' : !state?.configured ? 'Text conversation needs OPENAI_API_KEY in the server environment.'
     : sending || state.status === 'processing' ? 'Passenger is thinking…' : 'Ready to talk';
 }
 function render(value: unknown) {

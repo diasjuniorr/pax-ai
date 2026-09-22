@@ -18,6 +18,10 @@ button:disabled { cursor: default; }
 .hint { font-size: .9rem; color: #555; }
 #session-error { color: #a32020; }
 #conversation-error { color: #a32020; }
+#voice-error { color: #a32020; }
+#voice-talk { touch-action: none; user-select: none; margin-top: .5rem; }
+#voice-talk[aria-pressed="true"] { background: #173f6d; color: white; }
+#voice-transcript { white-space: pre-wrap; overflow-wrap: anywhere; }
 #conversation-messages { list-style: none; padding: 0; max-height: 24rem; overflow-y: auto; }
 #conversation-messages li { padding: .75rem; margin: .5rem 0; background: #f1f4f8; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 #conversation-form button { margin-top: .75rem; }

@@ -10,15 +10,16 @@ import { WebSocket } from 'ws';
 import { createTelemetryServer } from '../apps/server/src/server';
 import { validateHostedOptions } from '../apps/server/src/hosting';
 import type { ConversationOptions } from '../apps/server/src/conversation';
+import type { VoiceOptions } from '../apps/server/src/voice';
 
 const origin = 'https://pax-test.onrender.com';
 const bridgeToken = 'b'.repeat(48), dashboardToken = 'd'.repeat(48);
-async function setup(t: TestContext, conversation: ConversationOptions = {}) {
+async function setup(t: TestContext, conversation: ConversationOptions = {}, voice: VoiceOptions = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'pax-hosting-'));
   writeFileSync(join(directory, 'index.html'), '<h1>Private dashboard</h1>');
   mkdirSync(join(directory, 'assets'));
   writeFileSync(join(directory, 'assets/app.js'), '/* private asset */');
-  const server = createTelemetryServer(() => {}, { publicOrigin: origin, bridgeToken, dashboardToken, staticDirectory: directory }, conversation);
+  const server = createTelemetryServer(() => {}, { publicOrigin: origin, bridgeToken, dashboardToken, staticDirectory: directory }, conversation, voice);
   const sockets: WebSocket[] = [];
   t.after(async () => { for (const socket of sockets) socket.terminate(); await server.close(); rmSync(directory, { recursive: true }); });
   server.http.listen(0, '127.0.0.1'); await once(server.http, 'listening');
@@ -140,6 +141,33 @@ test('conversation HTTP API requires dashboard authorization, rejects stale sess
   assert.equal((await post('/api/conversation', body)).status, 200);
   assert.equal(calls, 1);
   await post('/api/session/end', { id: session.id });
-  assert.deepEqual(await (await fetch(path, { headers })).json(), { sessionId: null, configured: true, status: 'idle', messages: [] });
+  assert.deepEqual(await (await fetch(path, { headers })).json(), { sessionId: null, configured: true, status: 'idle', messages: [], voiceActive: false });
   assert.equal((await post('/api/conversation', body)).status, 409);
+});
+
+test('voice API protects negotiation, excludes text/other tabs and hangs up on session end', async t => {
+  let calls = 0, closes = 0;
+  const { url, login } = await setup(t, { provider: async () => ({ text: 'Hello' }) }, { provider: async () => {
+    calls++; return { sdp: 'v=0\r\nanswer', close: async () => { closes++; } };
+  } });
+  assert.equal((await fetch(`${url}/api/voice`)).status, 401);
+  assert.equal((await fetch(`${url}/api/voice`, { headers: { Authorization: `Bearer ${bridgeToken}` } })).status, 401);
+  const cookie = (await login(dashboardToken)).headers.get('set-cookie')!.split(';')[0]!;
+  const headers = { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' };
+  const post = (path: string, body: unknown, extra = {}) => fetch(`${url}${path}`, { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify(body) });
+  const { passenger } = await (await post('/api/passenger/random', {})).json() as { passenger: unknown };
+  const { session } = await (await post('/api/session', { passenger, expectedDurationMinutes: 30 })).json() as { session: { id: string } };
+  const owner = { sessionId: session.id, connectionId: '00000000-0000-4000-8000-000000000003' };
+  const input = { ...owner, sdp: 'v=0\r\n' };
+  assert.equal((await post('/api/voice/start', input, { Origin: 'null' })).status, 403);
+  assert.equal((await post('/api/voice/start', { ...input, instructions: 'Injected' })).status, 400);
+  assert.equal(calls, 0);
+  assert.equal((await post('/api/voice/start', input)).status, 200);
+  assert.equal((await post('/api/voice/start', input)).status, 409);
+  assert.equal((await post('/api/conversation', { sessionId: session.id, requestId: owner.connectionId, message: 'Hi' })).status, 409);
+  assert.equal((await post('/api/voice/heartbeat', owner)).status, 200);
+  assert.equal((await post('/api/voice/stop', { ...owner, connectionId: session.id })).status, 409);
+  assert.equal((await post('/api/session/end', { id: session.id })).status, 200);
+  assert.equal(closes, 1); assert.equal(calls, 1);
+  assert.deepEqual(await (await fetch(`${url}/api/voice`, { headers })).json(), { configured: true, active: false });
 });

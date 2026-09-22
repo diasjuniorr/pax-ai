@@ -5,14 +5,16 @@ import { TelemetryStore } from '@pax/telemetry';
 import { createHostedAccess, type HostedOptions } from './hosting';
 import { createSessionApi } from './session-api';
 import type { ConversationOptions } from './conversation';
+import type { VoiceOptions } from './voice';
 
 export function createTelemetryServer(log = (component: string, message: string, details = {}) => {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), component, message, ...details }));
-}, hosted?: HostedOptions, conversationOptions: ConversationOptions = {}) {
+}, hosted?: HostedOptions, conversationOptions: ConversationOptions = {}, voiceOptions: VoiceOptions = {}) {
   const access = hosted ? createHostedAccess(hosted) : undefined;
   const sessionApi = createSessionApi(req => !access || access.viewerAuthorized(req),
     hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173'],
-    { log: (message, details) => log('OPENAI', message, details), ...conversationOptions });
+    { log: (message, details) => log('OPENAI', message, details), ...conversationOptions },
+    { log: message => log('VOICE', message), ...voiceOptions });
   const store = new TelemetryStore();
   const http = createServer((req, res) => {
     if (req.url?.startsWith('/api/')) {
@@ -106,6 +108,7 @@ export function createTelemetryServer(log = (component: string, message: string,
     client.send(JSON.stringify(store.snapshot()));
   });
   const timer = setInterval(() => {
+    void sessionApi.tick();
     if (bridge && Date.now() - lastHeartbeat > 5000) {
       log('BRIDGE', 'Heartbeat timed out');
       bridge.terminate();
@@ -115,7 +118,7 @@ export function createTelemetryServer(log = (component: string, message: string,
   return {
     http,
     async close() {
-      sessionApi.close();
+      await sessionApi.close();
       clearInterval(timer);
       for (const client of [...bridges.clients, ...viewers.clients]) client.terminate();
       bridges.close(); viewers.close();

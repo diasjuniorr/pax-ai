@@ -1,6 +1,6 @@
 # Pax — MSFS 2024 telemetry MVP
 
-PAX currently has a local SimConnect reader, hosted TypeScript backend, telemetry dashboard, editable passenger/flight-session controls, and a text conversation preview backed by OpenAI. AI voice, HOTAS, autonomous event reactions, and a database are not implemented. Live simulator acceptance remains pending.
+PAX currently has a local SimConnect reader, hosted TypeScript backend, telemetry dashboard, editable passenger/flight-session controls, and a text conversation preview backed by OpenAI. A browser voice preview is implemented but live voice is unverified. HOTAS, autonomous event reactions, and a database are not implemented. Live simulator acceptance remains pending.
 
 The authoritative implementation tracker is [the PAX roadmap](docs/ROADMAP.md). Current gate: **Milestone 1 — Windows Live Acceptance**. Update the roadmap after every implementation task; later milestones depend on passing the current acceptance gate unless explicitly instructed otherwise.
 
@@ -86,4 +86,10 @@ Sign into the hosted dashboard to create a profile manually or choose **Generate
 
 ## Text conversation preview
 
-Set `OPENAI_API_KEY` in the server environment to enable text replies. Optional `PAX_OPENAI_TEXT_MODEL` defaults to `gpt-4.1-mini`. See [setup and testing](docs/text-conversation.md). The key stays on the server. The last ten exchanges are held in memory, cleared at session end/restart, and sent with the profile and planned route on each request. Voice, live flight awareness and autonomous reactions remain pending.
+Set `OPENAI_API_KEY` in the server environment to enable text replies. Optional `PAX_OPENAI_TEXT_MODEL` defaults to `gpt-4.1-mini`. See [setup and testing](docs/text-conversation.md). The key stays on the server. The last ten exchanges are held in memory, cleared at session end/restart, and sent with the profile and planned route on each request. Live flight awareness and autonomous reactions remain pending. The separate voice preview below is ready for hardware/API testing.
+
+## Browser voice and flight-event foundations
+
+Use **Voice preview → Connect voice**, allow the microphone, then hold/release **Hold to talk**. The server uses `OPENAI_API_KEY` and optional `PAX_OPENAI_REALTIME_MODEL` (default `gpt-realtime`). See [voice setup, limits and acceptance](docs/voice-preview.md). This preview requires a visible browser tab and does not replace the pending HOTAS integration.
+
+Takeoff/landing detection and an objective event gate are implemented as isolated, synthetically tested logic. They are not connected to live telemetry or AI yet; see [event integration prerequisites](docs/flight-event-foundation.md).

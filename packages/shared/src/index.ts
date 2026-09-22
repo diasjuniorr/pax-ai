@@ -58,7 +58,12 @@ export const conversationInputSchema = z.object({
   sessionId: z.string().uuid(), requestId: z.string().uuid(), message: shortText(2000),
 }).strict();
 export const conversationStateSchema = z.object({
+  voiceActive: z.boolean().optional(),
   sessionId: z.string().uuid().nullable(), configured: z.boolean(), status: z.enum(['idle', 'processing']),
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })).max(20),
 });
 export type ConversationState = z.infer<typeof conversationStateSchema>;
+
+export const voiceOwnerSchema = z.object({ sessionId: z.string().uuid(), connectionId: z.string().uuid() }).strict();
+export const voiceStartSchema = voiceOwnerSchema.extend({ sdp: z.string().min(1).max(100000).startsWith('v=0') });
+export const voiceAvailabilitySchema = z.object({ configured: z.boolean(), active: z.boolean() });
