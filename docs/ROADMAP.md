@@ -21,6 +21,13 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 Last reviewed: 2026-09-22 against source, package boundaries, tests, [README](../README.md), [architecture](architecture.md), and [acceptance evidence](windows-acceptance.md). Dates below are targets, not permission to bypass acceptance gates.
 
+## Dashboard presentation — 2026-09-23
+
+- [x] User-selected dark aviation style: charcoal surfaces, pale green accents, responsive passenger/conversation workspace, dedicated flight monitor and connection indicators driven by real connection state.
+- [x] Preserve session, text, voice and event controls; add section navigation, visible keyboard focus, a skip link, empty states and distinct text-message styling. Correct outdated voice availability copy.
+- [x] Production build/typecheck and all 5 existing browser regressions passed. Manual browser screenshots reviewed at 1440, 768, 390 and 320 pixels; no horizontal overflow or page errors. Preview images are local under `dist/ui-preview/`.
+- [ ] Verify the deployed appearance after Render updates. This UI change does not alter the Windows runtime package or complete live MSFS/voice acceptance.
+
 ## Status legend
 
 - [x] Completed and verified within the explicitly stated scope, with evidence.

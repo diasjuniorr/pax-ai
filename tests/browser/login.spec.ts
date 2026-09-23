@@ -26,11 +26,11 @@ test('native browser form preserves its origin, signs in, and loads the protecte
   await page.close();
   const dashboard = await context.newPage();
   await dashboard.goto('https://pax.test/');
-  await expect(dashboard.getByRole('heading', { name: 'Pax · Telemetry debug' })).toBeVisible();
+  await expect(dashboard.getByRole('heading', { name: 'Your next flight, together.' })).toBeVisible();
   const cookie = (await context.cookies('https://pax.test')).find(c => c.name === '__Host-pax_session');
   expect(cookie).toMatchObject({ secure: true, httpOnly: true, sameSite: 'Strict' });
   await dashboard.reload();
-  await expect(dashboard.getByRole('heading', { name: 'Pax · Telemetry debug' })).toBeVisible();
+  await expect(dashboard.getByRole('heading', { name: 'Your next flight, together.' })).toBeVisible();
 });
 
 test('passenger can be generated, edited, started, restored on reload and ended', async ({ page }) => {

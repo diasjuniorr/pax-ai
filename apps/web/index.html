@@ -1,42 +1,62 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pax telemetry debug</title></head>
-<body><main><h1>Pax · Telemetry debug</h1><section aria-labelledby="passenger-heading"><h2 id="passenger-heading">Passenger and flight</h2>
-<p>Create an editable passenger yourself or use a starter profile, then try text or voice conversation.</p>
-<p id="session-status" role="status">Loading session...</p><p id="session-summary"></p>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#101719"><title>PAX · Flight companion</title></head>
+<body>
+<a class="skip-link" href="#dashboard">Skip to dashboard</a>
+<header class="topbar"><a class="brand" href="#dashboard" aria-label="PAX dashboard"><span class="brand-mark" aria-hidden="true">↗</span>PAX<span class="brand-caption">YOUR FLIGHT COMPANION</span></a><nav aria-label="Dashboard sections"><a href="#passenger">Passenger</a><a href="#conversation">Conversation</a><a href="#flight-monitor">Flight monitor</a></nav><span class="preview-label">MVP / PREVIEW</span></header>
+<main id="dashboard">
+<div class="page-heading"><div><p class="eyebrow">A LITTLE COMPANY AT ALTITUDE</p><h1>Your next flight, together.</h1><p class="intro">Meet your passenger. Set your route. Make the journey a conversation.</p></div><a class="monitor-link" href="#flight-monitor">Open flight monitor <span aria-hidden="true">↗</span></a></div>
+<div class="connection-strip" aria-label="Connection status"><span class="strip-label">CONNECTIONS</span><p id="server" data-state="offline">Server: DISCONNECTED</p><p id="bridge" data-state="offline">Bridge: DISCONNECTED</p><p id="sim" data-state="offline">MSFS: DISCONNECTED</p></div>
+<div class="workspace">
+<section id="passenger" class="panel passenger-panel" aria-labelledby="passenger-heading">
+<div class="panel-heading"><div><p class="eyebrow">01 / BEFORE DEPARTURE</p><h2 id="passenger-heading">Passenger and flight</h2></div><span class="section-symbol" aria-hidden="true">↗</span></div>
+<p class="section-description">Give the seat beside you a story. Create a passenger or start with a generated profile.</p>
+<p id="session-status" class="status-line" role="status">Loading session...</p><p id="session-summary" class="session-summary"></p>
 <form id="session-form"><fieldset id="session-fields"><legend>Passenger profile</legend>
-<button id="random-passenger" type="button">Generate passenger</button>
+<button id="random-passenger" class="secondary full-width" type="button">Generate passenger</button>
 <div class="form-grid">
-<label>Name<input id="passenger-name" required maxlength="80"></label>
-<label>Age<input id="passenger-age" type="number" min="1" max="120" required></label>
+<label>Name<input id="passenger-name" required maxlength="80" placeholder="Passenger name"></label>
+<label>Age<input id="passenger-age" type="number" min="1" max="120" required placeholder="Years"></label>
 <label>Gender<input id="passenger-gender" required maxlength="60"></label>
 <label>Occupation<input id="passenger-occupation" required maxlength="100"></label>
 <label>Flight disposition<select id="passenger-disposition"><option value="calm">Calm</option><option value="curious">Curious</option><option value="nervous">Nervous</option><option value="enthusiastic">Enthusiastic</option></select></label>
-<label>Personality traits (comma-separated, up to 6)<input id="passenger-traits" required maxlength="245"></label>
-<label class="wide">Reason for traveling<textarea id="passenger-reason" required maxlength="400"></textarea></label>
-<label>Expected duration (minutes)<input id="flight-duration" type="number" min="1" max="1440" value="45" required></label>
-<label>Origin (optional)<input id="flight-origin" maxlength="120" placeholder="Airport or city"></label>
+<label>Personality traits (comma-separated, up to 6)<input id="passenger-traits" required maxlength="245" placeholder="Thoughtful, curious"></label>
+<label class="wide">Reason for traveling<textarea id="passenger-reason" required maxlength="400" placeholder="What brings them on this journey?"></textarea></label>
+</div>
+<div class="route-heading"><span>FLIGHT PLAN</span><span aria-hidden="true">DEPARTURE ─── ARRIVAL</span></div>
+<div class="form-grid"><label>Origin (optional)<input id="flight-origin" maxlength="120" placeholder="Airport or city"></label>
 <label>Destination (optional)<input id="flight-destination" maxlength="120" placeholder="Airport or city"></label>
-</div><button type="submit">Start session</button></fieldset></form>
-<button id="end-session" type="button" hidden>End session</button>
-<p id="session-error" role="alert"></p><p class="hint">One shared session for this dashboard. Refreshing keeps it; a server restart or deployment clears it. Starting a session does not start a simulator flight.</p></section>
-<section aria-labelledby="conversation-heading"><h2 id="conversation-heading">Talk to your passenger</h2>
-<p class="hint">Text conversation preview. Replies use the passenger profile and planned route; live flight awareness and voice are still to come. Keeps the last 10 exchanges until the session ends or the server restarts.</p>
-<p id="conversation-status" role="status">Loading conversation...</p>
-<ol id="conversation-messages" aria-label="Conversation"></ol>
-<form id="conversation-form"><label>Message to passenger<textarea id="conversation-input" required maxlength="2000" disabled placeholder="What brings you on this trip?"></textarea></label>
-<button id="conversation-send" type="submit" disabled>Send message</button></form>
-<p id="conversation-error" role="alert"></p></section>
-<section aria-labelledby="voice-heading"><h2 id="voice-heading">Voice preview</h2>
-<p class="hint">Connect, allow microphone access, then hold the button to speak and release for a reply. The passenger voice is AI-generated. Use headphones. This browser preview needs a visible tab; HOTAS control is still pending.</p>
-<p id="voice-status" role="status">Checking voice availability…</p>
-<button id="voice-connect" type="button" disabled>Connect voice</button>
-<button id="voice-disconnect" type="button" disabled>Disconnect voice</button>
-<button id="voice-talk" type="button" disabled aria-pressed="false">Hold to talk</button>
-<audio id="voice-audio" autoplay></audio>
+<label class="wide">Expected duration (minutes)<input id="flight-duration" type="number" min="1" max="1440" value="45" required></label></div>
+<button class="full-width" type="submit">Start session</button></fieldset></form>
+<button id="end-session" class="secondary full-width" type="button" hidden>End session</button>
+<p id="session-error" role="alert"></p><p class="hint">Your session is shared across the dashboard and survives a refresh. A server restart clears it. Start your simulator flight separately.</p>
+</section>
+<div class="conversation-column">
+<section id="conversation" class="panel conversation-panel" aria-labelledby="conversation-heading">
+<div class="panel-heading"><div><p class="eyebrow">02 / IN GOOD COMPANY</p><h2 id="conversation-heading">Talk to your passenger</h2></div><span class="tag">TEXT</span></div>
+<p id="conversation-status" class="status-line" role="status">Loading conversation...</p>
+<div class="conversation-history"><ol id="conversation-messages" aria-label="Conversation"></ol><div class="conversation-empty"><span class="empty-symbol" aria-hidden="true">“</span><h3>Every journey has a story.</h3><p>Start a session, then ask your passenger<br>what brings them on this trip.</p></div></div>
+<form id="conversation-form"><label>Message to passenger<textarea id="conversation-input" required maxlength="2000" disabled placeholder="What brings you on this trip?"></textarea></label><div class="composer-footer"><span class="hint">Get to know who's flying with you.</span><button id="conversation-send" type="submit" disabled>Send message</button></div></form>
+<p id="conversation-error" role="alert"></p><p class="hint">Replies use the passenger profile and planned route. The last 10 exchanges are kept during the session. Live flight awareness is not connected yet.</p>
+</section>
+<section class="panel voice-panel" aria-labelledby="voice-heading"><div class="panel-heading"><div><p class="eyebrow">A MORE NATURAL CONVERSATION</p><h2 id="voice-heading">Voice preview</h2></div><span class="tag">AI VOICE</span></div>
+<p class="section-description">Connect your microphone, hold to speak, and release to hear a reply. Headphones recommended.</p>
+<p id="voice-status" class="status-line" role="status">Checking voice availability…</p>
+<div class="voice-controls"><button id="voice-connect" class="secondary" type="button" disabled>Connect voice</button><button id="voice-disconnect" class="quiet" type="button" disabled>Disconnect voice</button></div>
+<button id="voice-talk" class="full-width" type="button" disabled aria-pressed="false">Hold to talk</button><audio id="voice-audio" autoplay></audio>
 <p id="voice-error" role="alert"></p><p id="voice-transcript" aria-label="Latest spoken reply"></p><p id="voice-usage" class="hint"></p>
-<p class="hint">Voice uses your active passenger and planned flight. Voice history is separate from text and resets when disconnected. No live flight awareness yet. Connecting and speaking use the OpenAI API.</p></section>
-<section aria-labelledby="flight-events-heading"><h2 id="flight-events-heading">Flight events · validation</h2>
-<p id="detector-status" role="status">Waiting for detector state</p><p id="aircraft-identity">Aircraft: —</p><p id="flight-generation">Generation: —</p>
-<ol id="flight-events" aria-label="Detected flight events"></ol>
-<p class="hint">Recent takeoff/landing detections for the current aircraft generation. Initial state is learned silently; pause, load and reconnect reset the evidence. These events do not trigger passenger speech yet. Fixed-wing thresholds still need live validation.</p></section>
-<h2>Simulator telemetry</h2><p id="server">Server: DISCONNECTED</p><p id="bridge">Bridge: DISCONNECTED</p><h2 id="sim">MSFS: DISCONNECTED</h2><p id="freshness" role="status">Waiting for telemetry</p><table><tbody id="values"></tbody></table><p>Heading is true north. Gear and flaps show actual extension.</p></main><script type="module" src="/src/main.ts"></script></body></html>
+<details><summary>About voice preview</summary><p class="hint">The voice is AI-generated and uses your active passenger and planned flight. Keep this tab visible while talking. HOTAS control and live flight awareness are still pending. Voice history is separate from text and resets on disconnect. Connecting and speaking use the OpenAI API.</p></details>
+</section>
+</div>
+</div>
+<div id="flight-monitor" class="monitor-heading"><div><p class="eyebrow">03 / FLIGHT MONITOR</p><h2>A view from the cockpit.</h2></div><span class="tag">SIMULATOR DIAGNOSTICS</span></div>
+<div class="monitor-grid">
+<section class="panel" aria-labelledby="telemetry-heading"><div class="panel-heading"><h2 id="telemetry-heading">Simulator telemetry</h2><span class="section-symbol" aria-hidden="true">⌁</span></div><p id="freshness" class="status-line" role="status">Waiting for telemetry</p><table><caption class="sr-only">Current simulator readings</caption><tbody id="values"></tbody></table><p class="hint">Heading is true north. Gear and flaps show actual extension.</p></section>
+<section class="panel" aria-labelledby="flight-events-heading"><div class="panel-heading"><h2 id="flight-events-heading">Flight events · validation</h2><span class="tag">EVENT LOG</span></div>
+<p id="detector-status" class="status-line" role="status">Waiting for detector state</p><p id="aircraft-identity">Aircraft: —</p><p id="flight-generation">Generation: —</p>
+<div class="event-history"><ol id="flight-events" aria-label="Detected flight events"></ol><p class="events-empty">No flight events in this segment.<br><span>Detections will appear here as you fly.</span></p></div>
+<p class="hint">Takeoff and landing events for the current aircraft generation. Pause, load and reconnect reset the evidence. Events do not trigger passenger speech yet; thresholds still need live validation.</p></section>
+</div>
+<footer><span class="footer-brand">PAX <span>/ Passenger Awareness eXperience</span></span><span>Made for the journey.</span></footer>
+</main><script type="module" src="/src/main.ts"></script>
+</body></html>

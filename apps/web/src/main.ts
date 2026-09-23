@@ -24,7 +24,7 @@ let socket: WebSocket;
 let reconnectDelay = 1000;
 function connect() {
   socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/telemetry`);
-  socket.onopen = () => { lastMessage = Date.now(); element('server').textContent = 'Server: CONNECTED'; };
+  socket.onopen = () => { lastMessage = Date.now(); element('server').textContent = 'Server: CONNECTED'; element('server').dataset.state = 'online'; };
   socket.onmessage = event => {
     let value: unknown;
     try { value = JSON.parse(event.data); } catch { return; }
@@ -34,6 +34,8 @@ function connect() {
     reconnectDelay = 1000;
     const state = parsed.data;
     renderFlightDebug(state.flight);
+    element('bridge').dataset.state = state.bridgeConnected ? 'online' : 'offline';
+    element('sim').dataset.state = state.simulatorConnected ? 'online' : 'offline';
     element('bridge').textContent = `Bridge: ${state.bridgeConnected ? 'CONNECTED' : 'DISCONNECTED'}`;
     element('sim').textContent = `MSFS: ${state.simulatorConnected ? 'CONNECTED' : 'DISCONNECTED'}`;
     element('freshness').textContent = `Telemetry: ${state.telemetryState.toUpperCase()}${state.telemetry ? ' · captured ' + new Date(state.telemetry.timestamp).toLocaleTimeString() : ''}`;
@@ -46,6 +48,7 @@ function connect() {
   };
   socket.onclose = event => {
     if (event.code === 1008) { location.reload(); return; }
+    for (const id of ['server', 'bridge', 'sim']) element(id).dataset.state = 'offline';
     element('server').textContent = 'Server: DISCONNECTED · reconnecting';
     element('bridge').textContent = 'Bridge: UNKNOWN';
     element('sim').textContent = 'MSFS: UNKNOWN';

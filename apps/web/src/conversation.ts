@@ -23,6 +23,7 @@ function render(value: unknown) {
     rendered = serialized;
     messages.replaceChildren(...next.messages.map(message => {
       const item = document.createElement('li');
+      item.dataset.role = message.role;
       item.textContent = `${message.role === 'user' ? 'You' : 'Passenger'}: ${message.content}`;
       return item;
     }));
