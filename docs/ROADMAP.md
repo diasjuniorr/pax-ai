@@ -10,7 +10,7 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Current milestones:** Milestone 1 — Windows Live Acceptance remains pending; Phase 2 passenger/profile/session and text-conversation foundations are implemented under the user's explicit authorization to work without the laptop.
 
-**Next action:** Build and package the new Windows agent, then tonight validate real telemetry and the **Flight events · validation** panel on the gaming laptop. Aircraft title, simulation generation and active-state metadata are now implemented; the backend detector is connected to telemetry for debug display only. Local validation passes; native build/runtime checks and the updated personal ZIP are being prepared. HOTAS, approach events, live threshold tuning and autonomous reactions remain pending. Browser voice can be tested separately on the Mac.
+**Next action:** The updated Windows package is ready; tonight validate real telemetry and the **Flight events · validation** panel on the gaming laptop. Aircraft title, simulation generation and active-state metadata are now implemented; the backend detector is connected to telemetry for debug display only. Local validation and full Windows CI pass; the complete personal ZIP for `a44ac964a306` is assembled and verified (see [package evidence](windows-package.md)). HOTAS, approach events, live threshold tuning and autonomous reactions remain pending. Browser voice can be tested separately on the Mac.
 
 
 **Sign-in fix — 2026-09-22:** The user deployed `https://pax-ai-2zo8.onrender.com` and encountered Forbidden at sign-in. Confirmed the live response used `Referrer-Policy: no-referrer`; a native browser form reproduced `Origin: null`. Changed policy to `same-origin` while retaining strict origin validation. Browser regression now verifies the real form origin, successful login, secure cookie and dashboard access in a new tab/reload. Build and eight backend tests passed locally. Windows CI, including the browser regression, passed in [run 35679867941](https://github.com/diasjuniorr/pax-ai/actions/runs/35679867941) for fix commit `41e02e2`. The user subsequently confirmed successful sign-in and dashboard display on the live Render service.
@@ -176,7 +176,7 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 - [x] Wire fresh active snapshots through detector and objective gate, independent of passenger session/AI. Publish bounded current-generation event history, status, identity and phase; log EVENT/GATE decisions and detector status changes.
 - [x] Add the dashboard event panel, disconnect clearing, legacy-agent guidance and synthetic browser coverage.
 - [x] Local validation: 38 backend/logic tests, 5 browser tests, production build and hosted smoke passed. Personal-package vendor reuse reproduces the existing ZIP byte-for-byte and rejects an altered DLL before packaging. No live MSFS/voice result claimed.
-- [ ] Complete Windows CI and assemble the updated personal runtime; record the commit/hash in [windows-package.md](windows-package.md). The first run passed the native job but failed during browser-fixture teardown (an in-flight response was disposed). Explicit route draining fixes the fixture race; all 5 browser tests pass locally again, with CI rerun pending.
+- [x] Full Windows CI passed for `a44ac964a306` in [run 35733774289](https://github.com/diasjuniorr/pax-ai/actions/runs/35733774289), including native build/runtime checks and browser tests after fixing fixture teardown. Complete personal ZIP assembled on 2026-09-23; all ten payload hashes/sizes and x64 PE headers verified. Exact artifact/hash recorded in [windows-package.md](windows-package.md).
 - [ ] Execute [tonight's test](tonight-test.md), record observed event/reset behavior and tune failures before enabling autonomous speech.
 
 ### Interaction Engine and OpenAI Realtime
@@ -194,7 +194,7 @@ Keep the spike limited to button detection; do not implement the complete PTT/au
 
 ## Phase 3 — Telemetry intelligence
 
-**Target:** Wednesday, 2026-09-23. **Status:** pending.
+**Target:** Wednesday, 2026-09-23. **Status:** TAKEOFF/LANDING pipeline and debug display implemented; live acceptance and approach event pending.
 
 Implement independently of SimConnect transport, building on the normalized contract:
 
@@ -203,19 +203,19 @@ AircraftTelemetry → State Tracker → minimal WorldState + FlightEvent
 FlightEvent → objective priority / dedup / cooldown gate
 ```
 
-- [ ] Define normalized `FlightEvent` with type, objective priority, timestamp, relevant payload and source; keep cooldown/dedup policy separate from passenger salience.
-- [ ] Define minimal `WorldState` for current flight facts/freshness, separately from events. No geography/landmark enrichment.
-- [ ] Initialize/reset detector baselines across stale data/reconnect and aircraft changes without emitting false transitions; carry normalized aircraft identity/session generation.
-- [ ] Confirm TAKEOFF/LANDING with a short fresh-sample history combining ground transitions, plausible IAS, AGL trend/height and climb/descent evidence; debounce bounces and tune for the stock test aircraft.
-- [ ] Implement state tracking and selected event detectors without coupling them to SDK structures.
-- [ ] HIGH: `TAKEOFF`.
-- [ ] HIGH: `LANDING`.
+- [x] Define normalized `FlightEvent` with type, objective priority, timestamp, relevant payload and source; keep cooldown/dedup policy separate from passenger salience.
+- [x] Define minimal `WorldState` for current flight facts/freshness, separately from events. No geography/landmark enrichment.
+- [~] Initialize/reset detector baselines across stale data/reconnect and aircraft changes without emitting false transitions; carry normalized aircraft identity/session generation.
+- [~] Confirm TAKEOFF/LANDING with a short fresh-sample history combining ground transitions, plausible IAS, AGL trend/height and climb/descent evidence; debounce bounces and tune for the stock test aircraft.
+- [x] Implement state tracking and selected event detectors without coupling them to SDK structures.
+- [~] HIGH: `TAKEOFF`.
+- [~] HIGH: `LANDING`.
 - [ ] After TAKEOFF/LANDING, select only the minimum additional event needed for approach acceptance (`GEAR_DEPLOYED`, previously `GEAR_DOWN`, is a candidate); do not claim gear deployment alone proves approach.
 - [ ] Optional/defer if unnecessary for Wednesday: `STRONG_MANEUVER`, only with reliable required measurements.
 - [ ] Optional/defer: heavy-rain entry only if reliable telemetry and remaining MVP needs justify it. The broader event examples are not a Wednesday checklist.
-- [ ] Implement deduplication, cooldowns and basic priority handling.
-- [ ] Verify detector transitions and suppression with focused tests, then validate selected events in a live flight.
-- [ ] Ensure ordinary raw telemetry changes stay local and are not sent to OpenAI.
+- [x] Implement deduplication, cooldowns and basic priority handling.
+- [~] Verify detector transitions and suppression with focused tests, then validate selected events in a live flight.
+- [x] Ensure ordinary raw telemetry changes stay local and are not sent to OpenAI.
 
 Dependency note: current telemetry has no weather, acceleration, pitch or bank fields. During this phase, determine the minimum reliable inputs for selected detectors; document any required contract extension. Do not infer reliable weather or strong-maneuver detection from unavailable data, or expand telemetry now merely for future scope.
 

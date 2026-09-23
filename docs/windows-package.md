@@ -51,4 +51,13 @@ Native import inspection confirms `MSVCP140.dll`, `VCRUNTIME140.dll`, and `VCRUN
 
 The assembler also accepts `--existing-runtime PATH_TO_OLDER_PERSONAL_ZIP` instead of `--sdk`. It reuses only the two Microsoft DLLs and EULA, checks their size and SHA-256 against the **new** Windows CI manifest, and verifies all new PAX payloads before writing a ZIP. A vendor mismatch fails before packaging; no developer tools or installer are added to the gaming laptop. This path was locally checked by reproducing the previous ZIP byte-for-byte and rejecting a modified native DLL.
 
-The aircraft-identity/event-debug change requires a newly compiled personal package for tonight. The prior `598c029eea4d` package still sends basic telemetry but cannot enable event detection. Updated artifact evidence will be recorded after CI and assembly complete.
+Use the current package below for aircraft identity and event diagnostics. The prior `598c029eea4d` package still sends basic telemetry but cannot enable event detection.
+
+
+## Current personal build — 2026-09-23
+
+Windows [run 35733774289](https://github.com/diasjuniorr/pax-ai/actions/runs/35733774289) passed for commit `a44ac964a30639ff1826acab781c67d9f71fa1eb`, including native compilation/runtime/layout checks and backend/browser validation.
+
+Complete local package: `dist/personal-runtime/PAX-windows-x64-a44ac964a306.zip` (260,038 bytes), with an adjacent `.zip.sha256` file. SHA-256: `5b3a41a76bb43371503a8bc94d2a879858e9d435587eda9ff499afa874af61d8`. All ten payload files match the new CI manifest by size and hash; the executable and both DLLs have x64 PE headers. Microsoft DLLs/EULA were reused from the prior personal ZIP and checked against the new manifest. This complete ZIP remains local/ignored.
+
+Follow [tonight's test](tonight-test.md) using a fresh extracted folder. Real MSFS callbacks, event thresholds, reconnect/reset behavior and clean-laptop prerequisites remain unverified. Event diagnostics do not yet trigger autonomous passenger speech.
