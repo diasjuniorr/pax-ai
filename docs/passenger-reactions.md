@@ -32,4 +32,6 @@ PAX remains single-instance/in-memory. Raw telemetry updates do not call OpenAI.
 
 Automated tests use synthetic telemetry and provider/WebRTC fixtures. They cover context allowlisting/unavailability, no replay, deduplication, cooldown, queue replacement/expiry/reset, protected real HTTP/WebSocket delivery, current voice ownership, PTT interruption, pending-buffer draining and late-context cancellation. They do not prove live OpenAI audio or model adherence. Record actual acceptance results separately.
 
+Local verification: 50 backend/logic/integration tests, 5 browser regressions, production build and compiled-host smoke passed. Full Windows CI passed for `d171941` in [run 36570941330](https://github.com/diasjuniorr/pax-ai/actions/runs/36570941330). Render deployment has not been independently verified.
+
 Implementation references: [OpenAI manual Realtime conversations and WebRTC interruption](https://developers.openai.com/api/docs/guides/realtime-conversations), [per-response instructions and client events](https://developers.openai.com/api/reference/resources/realtime/client-events).
