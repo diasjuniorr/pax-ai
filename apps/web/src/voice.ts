@@ -1,4 +1,4 @@
-import { voiceAvailabilitySchema } from '@pax/shared';
+import { voiceAvailabilitySchema, voiceTurnSchema, type ServerSnapshot } from '@pax/shared';
 import { VoiceLifecycle } from './voice/lifecycle';
 const button = (id: string) => document.getElementById(id) as HTMLButtonElement;
 const connect = button('voice-connect'), disconnect = button('voice-disconnect'), talk = button('voice-talk');
@@ -10,7 +10,24 @@ let availability = { configured: false, active: false };
 let online = false, polling = false, generation = 0;
 let resources: { pc: RTCPeerConnection; channel: RTCDataChannel; stream?: MediaStream; owner: { sessionId: string; connectionId: string } } | undefined;
 let heartbeat: ReturnType<typeof setInterval> | undefined;
+let reactionPoll: ReturnType<typeof setInterval> | undefined;
+let flight: ServerSnapshot | null = null, flightReceivedAt = 0, reactionsEnabled = false;
+let automaticGeneration: string | null = null;
+let lastPilotAction = 0;
+function liveFlight() {
+  return flight?.flight?.status === 'tracking' && flight.telemetryState === 'live'
+    && flight.simulation?.active && performance.now() - flightReceivedAt < 3000;
+}
 const lifecycle = new VoiceLifecycle({
+  prepareResponse: async () => {
+    const local = resources;
+    if (!local) throw new Error('Voice disconnected');
+    const started = performance.now();
+    const result = voiceTurnSchema.parse((await request('/turn', local.owner)).turn);
+    if (local !== resources || performance.now() - started >= result.validForMs
+      || (result.generation && flight && (!liveFlight() || result.generation !== flight.simulation?.generation))) throw new Error('Context expired');
+    return result.instructions;
+  },
   send: event => {
     try {
       if (resources?.channel.readyState !== 'open') throw new Error('Closed');
@@ -30,10 +47,10 @@ function render() {
   const phase = lifecycle.phase;
   connect.disabled = !online || !sessionId || !availability.configured || availability.active || phase !== 'disconnected';
   disconnect.disabled = phase === 'disconnected';
-  talk.disabled = phase !== 'idle' && phase !== 'listening';
+  talk.disabled = phase !== 'idle' && phase !== 'listening' && phase !== 'interrupting' && !lifecycle.automatic;
   talk.setAttribute('aria-pressed', String(phase === 'listening'));
   status.textContent = phase !== 'disconnected' ? ({ connecting: 'Connecting voice…', idle: 'Ready — hold the button to speak',
-    listening: 'Listening while held…', processing: 'Passenger is thinking…', speaking: 'Passenger is speaking…' }[phase])
+    listening: 'Listening while held…', processing: 'Passenger is thinking…', speaking: 'Passenger is speaking…', interrupting: 'Stopping the comment for you…' }[phase])
     : !sessionId ? 'Start a flight session to use voice.' : !online ? 'Checking voice availability…'
     : !availability.configured ? 'Voice needs OPENAI_API_KEY in the server environment.'
     : availability.active ? 'Voice is connected in another tab. Disconnect it there or wait for it to expire.' : 'Voice disconnected';
@@ -56,6 +73,7 @@ async function refresh() {
 function stop(message = '') {
   generation++;
   clearInterval(heartbeat); heartbeat = undefined;
+  clearInterval(reactionPoll); reactionPoll = undefined; automaticGeneration = null;
   const old = resources; resources = undefined;
   lifecycle.close();
   if (old) {
@@ -111,6 +129,23 @@ connect.addEventListener('click', () => {
       }
       await pc.setRemoteDescription({ type: 'answer', sdp: answer.sdp });
       if (current !== generation) return;
+      let reactionPending = false;
+      reactionPoll = setInterval(() => {
+        if (current !== generation) return;
+        if (lifecycle.automatic && (!reactionsEnabled || !liveFlight() || flight?.simulation?.generation !== automaticGeneration)) lifecycle.interrupt(false);
+        if (reactionPending || !reactionsEnabled || document.hidden || !liveFlight()) return;
+        reactionPending = true;
+        const started = performance.now(), pilotAction = lastPilotAction;
+        void request('/reaction', { ...owner, idle: lifecycle.phase === 'idle' && started - lastPilotAction > 1500 }).then(value => {
+          if (!value.turn) return;
+          const turn = voiceTurnSchema.parse(value.turn);
+          if (current !== generation || !reactionsEnabled || document.hidden || !liveFlight() || pilotAction !== lastPilotAction
+            || performance.now() - started >= turn.validForMs || turn.generation !== flight?.simulation?.generation) return;
+          automaticGeneration = turn.generation;
+          lifecycle.react(turn.instructions, Math.max(1, (turn.reactionRemainingMs ?? 15000) - (performance.now() - started))); // Rechecks idle after the HTTP round trip.
+        }).catch(() => { if (current === generation && lifecycle.automatic) lifecycle.interrupt(false); })
+          .finally(() => { reactionPending = false; });
+      }, 1000);
       let pending = false;
       heartbeat = setInterval(() => {
         if (pending) return;
@@ -125,13 +160,13 @@ connect.addEventListener('click', () => {
 disconnect.addEventListener('click', () => stop());
 talk.addEventListener('pointerdown', event => {
   if (event.button !== 0 || talk.disabled) return;
-  event.preventDefault(); talk.setPointerCapture(event.pointerId); lifecycle.down();
+  event.preventDefault(); lastPilotAction = performance.now(); talk.setPointerCapture(event.pointerId); lifecycle.down();
 });
 talk.addEventListener('pointerup', () => lifecycle.up());
 talk.addEventListener('pointercancel', () => lifecycle.cancel());
 talk.addEventListener('lostpointercapture', () => lifecycle.cancel());
 talk.addEventListener('keydown', event => {
-  if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); if (!event.repeat) lifecycle.down(); }
+  if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); if (!event.repeat) { lastPilotAction = performance.now(); lifecycle.down(); } }
 });
 talk.addEventListener('keyup', event => {
   if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); lifecycle.up(); }
@@ -143,5 +178,13 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && res
 document.addEventListener('pax-session', event => {
   const next = (event as CustomEvent<string | null>).detail;
   if (next !== sessionId) { stop(); transcript.textContent = ''; usage.textContent = ''; sessionId = next; render(); }
+});
+document.addEventListener('pax-flight', event => {
+  flight = (event as CustomEvent<ServerSnapshot | null>).detail; flightReceivedAt = performance.now();
+  if (lifecycle.automatic && (!liveFlight() || flight?.simulation?.generation !== automaticGeneration)) lifecycle.interrupt(false);
+});
+document.addEventListener('pax-reactions-enabled', event => {
+  reactionsEnabled = (event as CustomEvent<boolean>).detail;
+  if (!reactionsEnabled && lifecycle.automatic) lifecycle.interrupt(false);
 });
 void refresh(); setInterval(() => void refresh(), 3000);

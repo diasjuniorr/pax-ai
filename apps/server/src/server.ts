@@ -11,16 +11,16 @@ export function createTelemetryServer(log = (component: string, message: string,
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), component, message, ...details }));
 }, hosted?: HostedOptions, conversationOptions: ConversationOptions = {}, voiceOptions: VoiceOptions = {}) {
   const access = hosted ? createHostedAccess(hosted) : undefined;
-  const sessionApi = createSessionApi(req => !access || access.viewerAuthorized(req),
-    hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173'],
-    { log: (message, details) => log('OPENAI', message, details), ...conversationOptions },
-    { log: message => log('VOICE', message), ...voiceOptions });
   const store = new TelemetryStore();
   const intelligence = new FlightIntelligence(log);
   const snapshot = () => {
     const state = store.snapshot();
     return { ...state, flight: intelligence.update(state) };
   };
+  const sessionApi = createSessionApi(req => !access || access.viewerAuthorized(req),
+    hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173'],
+    { log: (message, details) => log('OPENAI', message, details), ...conversationOptions, flightSnapshot: snapshot },
+    { log: message => log('VOICE', message), ...voiceOptions });
   const http = createServer((req, res) => {
     if (req.url?.startsWith('/api/')) {
       void sessionApi(req, res).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); });
@@ -44,7 +44,9 @@ export function createTelemetryServer(log = (component: string, message: string,
   let lastHeartbeat = 0;
   let lastSampleLog = 0;
   const publish = () => {
-    const data = JSON.stringify(snapshot());
+    const state = snapshot();
+    sessionApi.observe(state);
+    const data = JSON.stringify(state);
     for (const client of viewers.clients) {
       if (client.bufferedAmount > 64 * 1024) client.terminate();
       else if (client.readyState === WebSocket.OPEN) client.send(data);

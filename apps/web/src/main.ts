@@ -3,6 +3,7 @@ import './style.css';
 import './session';
 import './conversation';
 import './voice';
+import './reactions';
 import { renderFlightDebug } from './flight-debug';
 const element = (id: string) => document.getElementById(id)!;
 const fields: [keyof AircraftTelemetry, string, string, number][] = [
@@ -33,6 +34,7 @@ function connect() {
     lastMessage = Date.now();
     reconnectDelay = 1000;
     const state = parsed.data;
+    document.dispatchEvent(new CustomEvent('pax-flight', { detail: state }));
     renderFlightDebug(state.flight);
     element('bridge').dataset.state = state.bridgeConnected ? 'online' : 'offline';
     element('sim').dataset.state = state.simulatorConnected ? 'online' : 'offline';
@@ -53,6 +55,7 @@ function connect() {
     element('bridge').textContent = 'Bridge: UNKNOWN';
     element('sim').textContent = 'MSFS: UNKNOWN';
     element('freshness').textContent = 'No server connection';
+    document.dispatchEvent(new CustomEvent('pax-flight', { detail: null }));
     renderFlightDebug();
     clear();
     setTimeout(connect, reconnectDelay + Math.random() * 500);

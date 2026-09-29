@@ -37,7 +37,7 @@
 <p id="conversation-status" class="status-line" role="status">Loading conversation...</p>
 <div class="conversation-history"><ol id="conversation-messages" aria-label="Conversation"></ol><div class="conversation-empty"><span class="empty-symbol" aria-hidden="true">“</span><h3>Every journey has a story.</h3><p>Start a session, then ask your passenger<br>what brings them on this trip.</p></div></div>
 <form id="conversation-form"><label>Message to passenger<textarea id="conversation-input" required maxlength="2000" disabled placeholder="What brings you on this trip?"></textarea></label><div class="composer-footer"><span class="hint">Get to know who's flying with you.</span><button id="conversation-send" type="submit" disabled>Send message</button></div></form>
-<p id="conversation-error" role="alert"></p><p class="hint">Replies use the passenger profile and planned route. The last 10 exchanges are kept during the session. Live flight awareness is not connected yet.</p>
+<p id="conversation-error" role="alert"></p><p class="hint">Replies use the passenger profile and planned route. The last 10 exchanges are kept during the session. Fresh simulator facts inform replies when the agent is connected; unavailable data is left out.</p>
 </section>
 <section class="panel voice-panel" aria-labelledby="voice-heading"><div class="panel-heading"><div><p class="eyebrow">A MORE NATURAL CONVERSATION</p><h2 id="voice-heading">Voice preview</h2></div><span class="tag">AI VOICE</span></div>
 <p class="section-description">Connect your microphone, hold to speak, and release to hear a reply. Headphones recommended.</p>
@@ -45,7 +45,8 @@
 <div class="voice-controls"><button id="voice-connect" class="secondary" type="button" disabled>Connect voice</button><button id="voice-disconnect" class="quiet" type="button" disabled>Disconnect voice</button></div>
 <button id="voice-talk" class="full-width" type="button" disabled aria-pressed="false">Hold to talk</button><audio id="voice-audio" autoplay></audio>
 <p id="voice-error" role="alert"></p><p id="voice-transcript" aria-label="Latest spoken reply"></p><p id="voice-usage" class="hint"></p>
-<details><summary>About voice preview</summary><p class="hint">The voice is AI-generated and uses your active passenger and planned flight. Keep this tab visible while talking. HOTAS control and live flight awareness are still pending. Voice history is separate from text and resets on disconnect. Connecting and speaking use the OpenAI API.</p></details>
+<div class="reaction-controls"><label class="toggle-label"><input id="reactions-enabled" type="checkbox" disabled> Allow automatic takeoff and landing comments</label><p class="hint">Off by default for each passenger session. Enabling uses the connected AI voice and API credits. Hold to talk to interrupt a comment.</p><p id="reaction-status" role="status">Loading reaction settings…</p><ol id="reaction-decisions" aria-label="Passenger reaction decisions"></ol></div>
+<details><summary>About voice preview</summary><p class="hint">The voice is AI-generated and uses your active passenger and planned flight. Keep this tab visible while talking. HOTAS control is still pending. Flight context refreshes for each reply. Voice history is separate from text and resets on disconnect. Connecting and speaking use the OpenAI API.</p></details>
 </section>
 </div>
 </div>
@@ -55,7 +56,7 @@
 <section class="panel" aria-labelledby="flight-events-heading"><div class="panel-heading"><h2 id="flight-events-heading">Flight events · validation</h2><span class="tag">EVENT LOG</span></div>
 <p id="detector-status" class="status-line" role="status">Waiting for detector state</p><p id="aircraft-identity">Aircraft: —</p><p id="flight-generation">Generation: —</p>
 <div class="event-history"><ol id="flight-events" aria-label="Detected flight events"></ol><p class="events-empty">No flight events in this segment.<br><span>Detections will appear here as you fly.</span></p></div>
-<p class="hint">Takeoff and landing events for the current aircraft generation. Pause, load and reconnect reset the evidence. Events do not trigger passenger speech yet; thresholds still need live validation.</p></section>
+<p class="hint">Takeoff and landing events for the current aircraft generation. Pause, load and reconnect reset the evidence. Optional passenger comments can use accepted events. Threshold tuning still needs live validation.</p></section>
 </div>
 <footer><span class="footer-brand">PAX <span>/ Passenger Awareness eXperience</span></span><span>Made for the journey.</span></footer>
 </main><script type="module" src="/src/main.ts"></script>

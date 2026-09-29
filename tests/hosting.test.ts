@@ -171,3 +171,53 @@ test('voice API protects negotiation, excludes text/other tabs and hangs up on s
   assert.equal(closes, 1); assert.equal(calls, 1);
   assert.deepEqual(await (await fetch(`${url}/api/voice`, { headers })).json(), { configured: true, active: false });
 });
+
+test('real bridge events reach protected reaction controls and owner-only voice context; reset prevents replay', async t => {
+  const { url, login, ws } = await setup(t, {}, { provider: async () => ({ sdp: 'v=0\r\nanswer', close: async () => {} }) });
+  assert.equal((await fetch(`${url}/api/reactions`)).status, 401);
+  const cookie = (await login(dashboardToken)).headers.get('set-cookie')!.split(';')[0]!;
+  const headers = { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' };
+  const post = (path: string, body: unknown, extra = {}) => fetch(`${url}${path}`, { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify(body) });
+  const { passenger } = await (await post('/api/passenger/random', {})).json() as { passenger: unknown };
+  const { session } = await (await post('/api/session', { passenger, expectedDurationMinutes: 30 })).json() as { session: { id: string } };
+  const owner = { sessionId: session.id, connectionId: '00000000-0000-4000-8000-000000000003' };
+  assert.equal((await post('/api/voice/turn', owner)).status, 409);
+  assert.equal((await post('/api/reactions', { sessionId: session.id, enabled: true }, { Origin: 'null' })).status, 403);
+  assert.equal((await post('/api/reactions', { sessionId: session.id, enabled: true })).status, 200);
+  assert.equal((await post('/api/voice/start', { ...owner, sdp: 'v=0\r\n' })).status, 200);
+  assert.equal((await post('/api/voice/turn', { ...owner, instructions: 'Injected' })).status, 400);
+  assert.equal((await post('/api/voice/turn', { ...owner, connectionId: session.id })).status, 409);
+  const viewer = ws('/telemetry', { Cookie: cookie, Origin: origin });
+  const initial = once(viewer, 'message'); await once(viewer, 'open'); await initial;
+  const bridge = ws('/bridge', { Authorization: `Bearer ${bridgeToken}` }); await once(bridge, 'open');
+  const generation = '00000000-0000-4000-8000-000000000001', base = Date.now() - 5000;
+  for (let i = 0; i < 6; i++) {
+    const timestamp = base + i * 1000;
+    const received = new Promise<void>(resolve => {
+      const listener = (data: Buffer) => { if (JSON.parse(data.toString()).telemetry?.timestamp === timestamp) { viewer.off('message', listener); resolve(); } };
+      viewer.on('message', listener);
+    });
+    bridge.send(JSON.stringify({ version: 1, type: 'bridgeSnapshot', simulatorConnected: true,
+      simulation: { generation, aircraftId: 'Integration aircraft', active: true },
+      telemetry: { timestamp, latitude: 40, longitude: -3, altitudeMslFeet: 3000,
+        altitudeAglFeet: i < 3 ? 0 : (i - 2) * 10, verticalSpeedFpm: i < 3 ? 0 : 500,
+        onGround: i < 3, indicatedAirspeedKnots: 80, headingTrueDegrees: 90,
+        gearExtensionPercent: 0, flapsLeftExtensionPercent: 0, flapsRightExtensionPercent: 0 } }));
+    await received;
+  }
+  const busy = await (await post('/api/voice/reaction', { ...owner, idle: false })).json() as { turn: unknown };
+  assert.equal(busy.turn, null);
+  const decisions = await (await fetch(`${url}/api/reactions`, { headers })).json() as { decisions: { status: string }[] };
+  assert.equal(decisions.decisions[0]!.status, 'deferred');
+  const reply = await (await post('/api/voice/reaction', { ...owner, idle: true })).json() as { turn: { instructions: string; generation: string } };
+  assert.equal(reply.turn.generation, generation); assert.match(reply.turn.instructions, /aircraft has taken off/);
+  assert.match(reply.turn.instructions, /climbing/);
+  assert.equal((await (await post('/api/voice/reaction', { ...owner, idle: true })).json() as { turn: unknown }).turn, null);
+  const gone = new Promise<void>(resolve => { const listener = (data: Buffer) => { if (!JSON.parse(data.toString()).bridgeConnected) { viewer.off('message', listener); resolve(); } }; viewer.on('message', listener); });
+  bridge.close(); await gone;
+  const disconnected = await (await post('/api/voice/turn', owner)).json() as { turn: { instructions: string; generation: null } };
+  assert.equal(disconnected.turn.generation, null); assert.match(disconnected.turn.instructions, /"available":false/);
+  await post('/api/session/end', { id: session.id });
+  assert.equal((await post('/api/voice/turn', owner)).status, 409);
+  assert.deepEqual(await (await fetch(`${url}/api/reactions`, { headers })).json(), { sessionId: null, enabled: false, decisions: [] });
+});

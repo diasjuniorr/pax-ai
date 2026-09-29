@@ -37,7 +37,8 @@ try {
   assert.equal(login.status, 303);
   const cookie = login.headers.get('set-cookie').split(';')[0];
   const page = await (await fetch(url, { headers: { Cookie: cookie } })).text();
-  assert.match(page, /Telemetry debug/);
+  assert.match(page, /id="dashboard"/);
+  assert.match(page, /id="conversation-form"/);
   const asset = page.match(/src="([^"]+\.js)"/)[1];
   const response = await fetch(`${url}${asset}`, { headers: { Cookie: cookie } });
   assert.equal(response.status, 200);

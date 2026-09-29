@@ -90,3 +90,19 @@ export type ConversationState = z.infer<typeof conversationStateSchema>;
 export const voiceOwnerSchema = z.object({ sessionId: z.string().uuid(), connectionId: z.string().uuid() }).strict();
 export const voiceStartSchema = voiceOwnerSchema.extend({ sdp: z.string().min(1).max(100000).startsWith('v=0') });
 export const voiceAvailabilitySchema = z.object({ configured: z.boolean(), active: z.boolean() });
+
+export const reactionDecisionSchema = z.object({
+  id: z.string(), timestamp: finite, event: z.enum(['TAKEOFF', 'LANDING']),
+  observation: z.string(), reason: z.string(),
+  status: z.enum(['preview', 'queued', 'deferred', 'dispatched', 'suppressed', 'discarded']),
+});
+export type ReactionDecision = z.infer<typeof reactionDecisionSchema>;
+export const reactionStateSchema = z.object({
+  sessionId: z.string().uuid().nullable(), enabled: z.boolean(),
+  decisions: z.array(reactionDecisionSchema).max(20),
+});
+export const voiceTurnSchema = z.object({
+  instructions: z.string().min(1).max(16000), generation: z.string().nullable(),
+  reactionId: z.string().optional(), reactionRemainingMs: finite.min(0).max(15000).optional(), validForMs: finite.min(0).max(3000),
+});
+export type VoiceTurn = z.infer<typeof voiceTurnSchema>;

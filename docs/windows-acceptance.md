@@ -54,7 +54,7 @@ $release -ge 528040
 9. Stop/restart agent; stop/restart backend on the development host; refresh/open multiple dashboard tabs. Verify clear/reconnect/latest-value behavior.
 10. Record CPU and memory in Task Manager during idle, flight and retry states; ensure no PAX service/autostart remains after closing it.
 
-These are planned target acceptance steps. The personal package is assembled and the hosted dashboard is user-verified; the live agent-to-simulator connection remains unverified. HOTAS testing follows telemetry acceptance; no Phase 2 work is authorized here.
+These are planned target acceptance steps. The personal package is assembled and the hosted dashboard is user-verified; the user has now confirmed live agent-to-simulator connectivity and updating telemetry (2026-09-25/26). Detailed remaining results are below. HOTAS testing and live voice acceptance remain separate checks.
 
 ## Evidence to fill in
 
@@ -71,10 +71,10 @@ These are planned target acceptance steps. The personal package is assembled and
 | Runtime check | Result / evidence |
 |---|---|
 | Artifact extracts and starts without compilation/development tools | Pending |
-| SDK-free client runtime loads | Pending |
+| SDK-free client runtime loads | User screenshot 2026-09-24: x64 app-local SimConnect loaded |
 | Bridge waits with simulator closed | Pending |
-| Real flight → connected, telemetry reaches dashboard | Pending |
-| Position, speed, altitude, AGL, vertical speed, heading, ground state | Pending |
+| Real flight → connected, telemetry reaches dashboard | User-confirmed 2026-09-25/26 |
+| Position, speed, altitude, AGL, vertical speed, heading, ground state | User reports live readings update as expected; individual measurements not recorded |
 | Gear/flaps transitions | Pending |
 | Pause/menu freshness | Pending |
 | Simulator exit/kill → disconnect, no PAX crash | Pending |
@@ -85,3 +85,7 @@ These are planned target acceptance steps. The personal package is assembled and
 | CPU/memory/idle/retry and clean shutdown | Pending |
 
 Record connect/first-sample/disconnect/reconnect logs and exact failures. Do not install the SDK to hide a missing dependency. Update [ROADMAP.md](ROADMAP.md) only from evidence. Milestone 1 remains incomplete.
+
+## User test update — 2026-09-25/26
+
+The user confirmed all dashboard connections and live telemetry updates while moving in MSFS. Prior screenshots show runtime loading and backend connection. Avast Behavior Shield quarantined PaxAgent.exe as IDP.Generic on 2026-09-24; the user submitted it for analysis and later restored it. No review outcome was provided. Broad “everything worked” feedback is not recorded as proof of individual TAKEOFF/LANDING counts or pause/reconnect checks.

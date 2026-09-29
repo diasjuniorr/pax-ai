@@ -1,13 +1,19 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z, ZodError } from 'zod';
+import { voiceOwnerSchema, type ServerSnapshot } from '@pax/shared';
+import { ReactionCoordinator } from './reactions';
+import { flightContext } from './flight-context';
 import { FlightSessionStore, generatePassenger } from './passenger';
-import { ConversationError, ConversationStore, type ConversationOptions } from './conversation';
+import { buildPassengerContext, ConversationError, ConversationStore, type ConversationOptions } from './conversation';
 import { VoiceStore, type VoiceOptions } from './voice';
 
 export function createSessionApi(authorize: (req: IncomingMessage) => boolean, allowedOrigins: string[], options: ConversationOptions = {}, voiceOptions: VoiceOptions = {}) {
   const store = new FlightSessionStore();
   const conversation = new ConversationStore(options);
   const voice = new VoiceStore(voiceOptions);
+  const reactions = new ReactionCoordinator(Date.now, decision => options.log?.('Reaction decision', { ...decision }));
+  const observe = (snapshot?: ServerSnapshot) => { if (snapshot) reactions.observe(store.snapshot().session, snapshot); };
+  const currentFlight = () => { const snapshot = options.flightSnapshot?.(); observe(snapshot); return snapshot; };
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
     const send = (status: number, data: unknown) => {
       res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -20,8 +26,9 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
     if (req.url === '/api/session' && req.method === 'GET') { send(200, store.snapshot()); return; }
     if (req.url === '/api/conversation' && req.method === 'GET') { send(200, { ...conversation.snapshot(), voiceActive: voice.snapshot().active }); return; }
     if (req.url === '/api/voice' && req.method === 'GET') { send(200, voice.snapshot()); return; }
+    if (req.url === '/api/reactions' && req.method === 'GET') { currentFlight(); send(200, reactions.snapshot()); return; }
     if (req.method !== 'POST') { send(405, { error: 'Method not allowed' }); return; }
-    if (!['/api/session', '/api/session/end', '/api/passenger/random', '/api/conversation', '/api/voice/start', '/api/voice/heartbeat', '/api/voice/stop'].includes(req.url ?? '')) { send(404, { error: 'Not found' }); return; }
+    if (!['/api/session', '/api/session/end', '/api/passenger/random', '/api/conversation', '/api/voice/start', '/api/voice/heartbeat', '/api/voice/stop', '/api/voice/turn', '/api/voice/reaction', '/api/reactions'].includes(req.url ?? '')) { send(404, { error: 'Not found' }); return; }
     if (req.headers['content-type']?.split(';')[0] !== 'application/json') { send(415, { error: 'Expected JSON' }); return; }
     try {
       let body = '', bytes = 0;
@@ -32,11 +39,35 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
         body += chunk.toString();
       }
       const data: unknown = JSON.parse(body);
+      if (req.url === '/api/reactions') {
+        const input = z.object({ sessionId: z.string().uuid(), enabled: z.boolean() }).strict().parse(data);
+        if (store.snapshot().session?.id !== input.sessionId) throw new ConversationError(409, 'That session is no longer active.');
+        currentFlight(); reactions.configure(input.enabled); send(200, reactions.snapshot()); return;
+      }
+      if (req.url === '/api/voice/turn' || req.url === '/api/voice/reaction') {
+        const input = voiceOwnerSchema.extend({ idle: z.boolean().optional() }).strict().parse(data);
+        voice.owner({ sessionId: input.sessionId, connectionId: input.connectionId });
+        const session = store.snapshot().session;
+        if (!session || session.id !== input.sessionId) throw new ConversationError(409, 'That session is no longer active.');
+        const snapshot = currentFlight();
+        const reaction = req.url === '/api/voice/reaction' ? reactions.claim(input.idle === true) : null;
+        if (req.url === '/api/voice/reaction' && !reaction) { send(200, { turn: null }); return; }
+        const flight = flightContext(snapshot);
+        send(200, { turn: { instructions: buildPassengerContext(session, snapshot, reaction?.perception),
+          generation: flight.available ? flight.generation : null,
+          validForMs: Math.max(0, Math.min(2000, reaction ? reaction.expires - Date.now() : 2000,
+            flight.available ? 3000 - (Date.now() - snapshot!.lastReceivedAt!) : 2000)),
+          ...(reaction ? { reactionId: reaction.id, reactionRemainingMs: Math.max(0, reaction.expires - Date.now()) } : {}),
+        } }); return;
+      }
       if (req.url === '/api/voice/start') {
+        reactions.discard('Voice connection restarted');
         send(200, await voice.start(store.snapshot().session, data, conversation.snapshot().status === 'processing')); return;
       }
       if (req.url === '/api/voice/heartbeat' || req.url === '/api/voice/stop') {
-        send(200, await voice.control(data, req.url === '/api/voice/stop')); return;
+        send(200, await voice.control(data, req.url === '/api/voice/stop'));
+        if (req.url === '/api/voice/stop') reactions.discard('Voice disconnected');
+        return;
       }
       if (req.url === '/api/conversation') {
         if (voice.snapshot().active) throw new ConversationError(409, 'Disconnect voice before sending a text message.');
@@ -49,13 +80,13 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
       if (req.url === '/api/session/end') {
         const { id } = z.object({ id: z.string().uuid() }).strict().parse(data);
         if (!store.end(id)) { send(409, { error: 'That session is no longer active. Refresh the session state.' }); return; }
-        conversation.reset(null);
+        conversation.reset(null); reactions.reset(null);
         await voice.stop();
         send(200, store.snapshot()); return;
       }
       const session = store.start(data);
       if (!session) { send(409, { error: 'A session is already active. End it before starting another.' }); return; }
-      conversation.reset(session.id);
+      conversation.reset(session.id); reactions.reset(session.id); currentFlight();
       send(201, { session });
     } catch (error) {
       if (error instanceof ConversationError) { send(error.status, { error: error.message }); return; }
@@ -65,5 +96,5 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
       throw error;
     }
   };
-  return Object.assign(handle, { tick: () => voice.expire(), close: async () => { conversation.reset(null); await voice.stop(); } });
+  return Object.assign(handle, { observe, tick: async () => { await voice.expire(); if (!voice.snapshot().active) reactions.discard('No connected voice session'); }, close: async () => { conversation.reset(null); reactions.reset(null); await voice.stop(); } });
 }

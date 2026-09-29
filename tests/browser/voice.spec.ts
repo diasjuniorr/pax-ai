@@ -14,13 +14,21 @@ test('voice preview holds/mutes microphone, waits for playback, and releases res
   const generated = await page.request.post('http://127.0.0.1:31847/api/passenger/random', { headers, data: {} });
   const start = await page.request.post('http://127.0.0.1:31847/api/session', { headers, data: { passenger: (await generated.json()).passenger, expectedDurationMinutes: 45 } });
   expect(start.status()).toBe(201);
-  let active = false, stopped = 0;
+  let active = false, stopped = 0, pendingReaction = false;
+  const flightGeneration = '00000000-0000-4000-8000-000000000001';
   await page.context().route('https://pax.test/**', async route => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith('/api/voice')) {
       if (url.pathname.endsWith('/start')) {
         expect(route.request().postDataJSON().sessionId).toBe((await start.json()).session.id);
         active = true; await route.fulfill({ json: { sdp: 'v=0\r\nfixture' } }); return;
+      }
+      if (url.pathname.endsWith('/turn')) { await route.fulfill({ json: { turn: { instructions: 'Fresh flight context fixture', generation: null, validForMs: 2000 } } }); return; }
+      if (url.pathname.endsWith('/reaction')) {
+        const idle = route.request().postDataJSON().idle;
+        const turn = pendingReaction && idle ? { instructions: 'Automatic takeoff context fixture', reactionId: 'test-takeoff', generation: flightGeneration, validForMs: 2000 } : null;
+        if (turn) pendingReaction = false;
+        await route.fulfill({ json: { turn } }); return;
       }
       if (url.pathname.endsWith('/stop')) { active = false; stopped++; }
       await route.fulfill({ json: { configured: true, active } }); return;
@@ -46,6 +54,13 @@ test('voice preview holds/mutes microphone, waits for playback, and releases res
       channel = { readyState: 'connecting', onopen: (() => {}) as () => void, onclose: () => {}, onerror: () => {},
         onmessage: (_event: { data: string }) => {},
         send: (value: string) => { const event = JSON.parse(value); fixture.sent.push(event.type);
+          if (event.type === 'response.create') {
+            if (!event.response?.instructions) throw new Error('Missing per-turn context');
+            if (event.response.instructions === 'Automatic takeoff context fixture')
+              setTimeout(() => fixture.emit({ type: 'response.created', response: { id: 'auto-fixture' } }), 0);
+          }
+          if (event.type === 'response.cancel') setTimeout(() => fixture.emit({ type: 'response.done', response: { id: 'auto-fixture', status: 'cancelled' } }), 0);
+          if (event.type === 'output_audio_buffer.clear') setTimeout(() => fixture.emit({ type: 'output_audio_buffer.cleared', response_id: 'auto-fixture' }), 0);
           if (event.type === 'input_audio_buffer.clear') setTimeout(() => fixture.emit({ type: 'input_audio_buffer.cleared' }), 0); },
         close: () => { this.channel.readyState = 'closed'; },
       };
@@ -81,6 +96,26 @@ test('voice preview holds/mutes microphone, waits for playback, and releases res
   await expect(talk).toBeEnabled();
   await expect(page.locator('#voice-transcript')).toHaveText('Hello, pilot.');
   await expect(page.locator('#voice-usage')).toContainText('12 input tokens');
+  // New flight-awareness seam: automatic reply only after opt-in, and PTT interrupts it.
+  await page.getByLabel('Allow automatic takeoff and landing comments').check();
+  await expect(page.locator('#reaction-status')).toContainText('Automatic comments enabled');
+  await page.evaluate(generation => {
+    const publish = () => document.dispatchEvent(new CustomEvent('pax-flight', { detail: {
+      telemetryState: 'live', simulation: { active: true, generation }, flight: { status: 'tracking' },
+    } }));
+    publish(); Object.assign(window, { flightTimer: setInterval(publish, 300) });
+  }, flightGeneration);
+  pendingReaction = true;
+  await expect.poll(async () => (await read()).sent.filter(e => e === 'response.create').length).toBe(2);
+  await expect(talk).toBeEnabled();
+  await talk.focus(); await page.keyboard.down('Space');
+  await expect.poll(async () => (await read()).sent).toContain('response.cancel');
+  await expect.poll(async () => (await read()).sent).toContain('output_audio_buffer.clear');
+  await expect.poll(async () => (await read()).enabled).toBe(true);
+  await page.keyboard.up('Space'); // Short tap after interrupt: do not submit another turn.
+  await page.evaluate(() => clearInterval((window as unknown as { flightTimer: number }).flightTimer));
+  await page.getByLabel('Allow automatic takeoff and landing comments').uncheck();
+  await expect(page.locator('#reaction-status')).toContainText('Silent preview');
   await page.getByRole('button', { name: 'Disconnect voice', exact: true }).click();
   expect((await read()).stopped).toBe(true); expect((await read()).closed).toBe(true);
   await expect.poll(() => stopped).toBe(1);

@@ -87,6 +87,13 @@ export class VoiceStore {
       throw new ConversationError(502, 'Could not connect voice. Please try again.');
     }
   }
+  owner(value: unknown) {
+    const input = voiceOwnerSchema.parse(value);
+    if (!this.lease?.call || this.lease.sessionId !== input.sessionId || this.lease.connectionId !== input.connectionId
+      || this.now() >= this.lease.expiresAt || this.now() - this.lease.startedAt >= 20 * 60000)
+      throw new ConversationError(409, 'That voice connection is no longer active.');
+    return input;
+  }
   async control(value: unknown, stop: boolean) {
     const input = voiceOwnerSchema.parse(value);
     if (!this.lease || this.lease.sessionId !== input.sessionId || this.lease.connectionId !== input.connectionId)
