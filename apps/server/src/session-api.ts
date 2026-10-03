@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z, ZodError } from 'zod';
-import { voiceOwnerSchema, type ServerSnapshot } from '@pax/shared';
+import { passengerGenerationSchema, voiceOwnerSchema, type ServerSnapshot } from '@pax/shared';
 import { ReactionCoordinator } from './reactions';
 import { flightContext } from './flight-context';
 import { FlightSessionStore, generatePassenger } from './passenger';
@@ -74,8 +74,8 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
         send(200, { ...await conversation.send(store.snapshot().session, data), voiceActive: false }); return;
       }
       if (req.url === '/api/passenger/random') {
-        z.object({}).strict().parse(data);
-        send(200, { passenger: generatePassenger() }); return;
+        const { tripType } = passengerGenerationSchema.parse(data);
+        send(200, { passenger: generatePassenger(tripType) }); return;
       }
       if (req.url === '/api/session/end') {
         const { id } = z.object({ id: z.string().uuid() }).strict().parse(data);

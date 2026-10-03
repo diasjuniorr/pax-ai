@@ -20,6 +20,7 @@ function render(value: unknown) {
   const next = flightSessionStateSchema.parse(value).session;
   if (next && next.id !== session?.id) {
     populate(next.passenger);
+    field('trip-type').value = next.tripType;
     field('flight-duration').value = String(next.expectedDurationMinutes);
     field('flight-origin').value = next.origin ?? '';
     field('flight-destination').value = next.destination ?? '';
@@ -53,12 +54,12 @@ async function mutate(work: () => Promise<void>) {
   finally { busy = false; controls(); await refresh(); }
 }
 document.getElementById('random-passenger')!.addEventListener('click', () => void mutate(async () => {
-  const value = await request('/api/passenger/random', {});
+  const value = await request('/api/passenger/random', { tripType: field('trip-type').value });
   populate(passengerProfileSchema.parse(value.passenger));
 }));
 document.getElementById('session-form')!.addEventListener('submit', event => {
   event.preventDefault();
-  const input = flightSessionInputSchema.safeParse({ passenger: {
+  const input = flightSessionInputSchema.safeParse({ tripType: field('trip-type').value, passenger: {
     name: field('passenger-name').value, age: Number(field('passenger-age').value),
     gender: field('passenger-gender').value, occupation: field('passenger-occupation').value,
     tripReason: field('passenger-reason').value,

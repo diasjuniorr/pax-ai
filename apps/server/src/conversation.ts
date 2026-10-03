@@ -28,7 +28,7 @@ export function buildPassengerContext(session: FlightSession, snapshot?: ServerS
     flight.available ? 'The supplied observations are a point-in-time snapshot, not continuous awareness. Describe motion naturally; do not present a single vertical-speed reading as a confirmed flight phase. Do not invent sensations or claim visual contact.' : 'Current simulator observations are unavailable. Say you cannot tell the current flight state if asked; do not reuse earlier flight facts as current.',
     reaction ? 'Make one brief spontaneous passenger comment (at most two short sentences) about perceivedEvent, guided by the passenger disposition. Do not ask the pilot to reply, give operational advice or repeat a prior comment. No emergency or danger is established.' : 'Answer the pilot. No autonomous speech is requested. If the pilot describes an event, distinguish their report from supplied observations.',
     JSON.stringify({ passenger: session.passenger, plannedFlight: {
-      expectedDurationMinutes: session.expectedDurationMinutes,
+      tripType: session.tripType, expectedDurationMinutes: session.expectedDurationMinutes,
       origin: session.origin ?? null, destination: session.destination ?? null,
     }, currentFlight: flight, ...(reaction ? { perceivedEvent: reaction } : {}) }),
   ].join('\n');

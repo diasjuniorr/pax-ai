@@ -46,8 +46,11 @@ test('passenger can be generated, edited, started, restored on reload and ended'
   const value = response.headers()['set-cookie']!.split(';')[0]!.split('=')[1]!;
   await page.context().addCookies([{ name: '__Host-pax_session', value, url: 'https://pax.test', secure: true, httpOnly: true, sameSite: 'Strict' }]);
   await page.goto('https://pax.test/');
+  await page.getByLabel('Trip type', { exact: true }).selectOption('light-cargo');
   await page.getByRole('button', { name: 'Generate passenger' }).click();
   await expect(page.getByLabel('Name', { exact: true })).not.toHaveValue('');
+  await expect(page.getByLabel('Reason for traveling')).not.toHaveValue('');
+  await page.getByLabel('Reason for traveling').fill('Escorting a repaired violin for a family friend.');
   await page.getByLabel('Name', { exact: true }).fill('My passenger');
   await page.getByLabel('Expected duration').fill('90');
   await page.getByLabel('Origin (optional)').fill('Madrid');
@@ -58,6 +61,8 @@ test('passenger can be generated, edited, started, restored on reload and ended'
   await page.reload();
   await expect(page.locator('#session-status')).toHaveText('Session active');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('My passenger');
+  await expect(page.getByLabel('Trip type', { exact: true })).toHaveValue('light-cargo');
+  await expect(page.getByLabel('Reason for traveling')).toHaveValue('Escorting a repaired violin for a family friend.');
   await expect(page.getByRole('button', { name: 'Start session', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'End session', exact: true }).click();
   await expect(page.locator('#session-status')).toHaveText('No active session');

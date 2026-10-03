@@ -37,3 +37,19 @@ test('session owns a profile snapshot, rejects replacement and stale end request
   for (const minutes of [0, -1, 1.5, 1441])
     assert.equal(flightSessionInputSchema.safeParse({ ...input, expectedDurationMinutes: minutes }).success, false);
 });
+
+test('each trip type has ten distinct valid reasons and generation stays within its catalog', async () => {
+  const { tripReasons } = await import('../apps/server/src/trip-reasons');
+  const { tripTypeSchema, passengerGenerationSchema } = await import('@pax/shared');
+  for (const type of tripTypeSchema.options) {
+    assert.ok(tripReasons[type].length >= 10);
+    assert.equal(new Set(tripReasons[type]).size, tripReasons[type].length);
+    for (const reason of tripReasons[type]) assert.ok(passengerProfileSchema.safeParse({ ...manual, tripReason: reason }).success);
+    for (let i = 0; i < 15; i++) assert.ok(tripReasons[type].includes(generatePassenger(type).tripReason));
+    const store = new FlightSessionStore();
+    const session = store.start({ passenger: generatePassenger(type), tripType: type, expectedDurationMinutes: 30 })!;
+    assert.equal(session.tripType, type); assert.equal(store.snapshot().session!.tripType, type);
+  }
+  assert.equal(passengerGenerationSchema.parse({}).tripType, 'sightseeing');
+  assert.equal(passengerGenerationSchema.safeParse({ tripType: 'unknown' }).success, false);
+});

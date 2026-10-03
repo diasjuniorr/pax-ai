@@ -1,5 +1,6 @@
+import { tripReasons } from './trip-reasons';
 import { randomInt, randomUUID } from 'node:crypto';
-import { flightSessionInputSchema, flightSessionSchema, passengerProfileSchema, type FlightSession, type PassengerProfile } from '@pax/shared';
+import { flightSessionInputSchema, flightSessionSchema, passengerProfileSchema, type FlightSession, type PassengerProfile, type TripType } from '@pax/shared';
 
 // Coherent starter profiles; generation is one source of the same editable model.
 const profiles: PassengerProfile[] = [
@@ -8,8 +9,9 @@ const profiles: PassengerProfile[] = [
   { name: 'Alex Chen', age: 27, gender: 'Nonbinary', occupation: 'Photographer', tripReason: 'Taking landscape photos on a short holiday', personalityTraits: ['creative', 'inquisitive', 'adventurous'], flightDisposition: 'enthusiastic' },
   { name: 'Maya Patel', age: 39, gender: 'Woman', occupation: 'Baker', tripReason: 'Visiting a sibling who recently moved away', personalityTraits: ['kind', 'practical', 'reserved'], flightDisposition: 'nervous' },
 ];
-export function generatePassenger(): PassengerProfile {
-  return passengerProfileSchema.parse(profiles[randomInt(profiles.length)]);
+export function generatePassenger(tripType: TripType = 'sightseeing'): PassengerProfile {
+  const reasons = tripReasons[tripType];
+  return passengerProfileSchema.parse({ ...profiles[randomInt(profiles.length)]!, tripReason: reasons[randomInt(reasons.length)] });
 }
 export class FlightSessionStore {
   private session: FlightSession | null = null;

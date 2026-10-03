@@ -52,6 +52,13 @@ Last reviewed: 2026-09-22 against source, package boundaries, tests, [README](..
 - Local validation: 54 backend tests, 6 browser tests, production build/typecheck and hosted smoke passed.
 - See [console usage and limits](debug-console.md). Reaction eligibility behavior is unchanged; the original suppression cause still needs a captured live log.
 
+## Trip-type travel reasons — 2026-10-03
+
+- Added sightseeing, light cargo, VIP executive and VIP special-event/guest selection, persisted with the flight session and included in text/voice context.
+- Separate local catalog contains 10 purposeful, editable reasons per type (40 total). Generation uses the selected category; changing selection does not overwrite manual edits. Existing clients default to sightseeing.
+- Local verification: 55 backend tests, 6 browser tests, production build/typecheck and hosted smoke passed, including selected category and edited reason restoration.
+- Future database/user-authored records, optional on-demand AI generation, real-world enrichment and simulator flight-plan airports are documented in [trip types](trip-types.md); they are not implemented or required for this increment.
+
 ## Status legend
 
 - [x] Completed and verified within the explicitly stated scope, with evidence.

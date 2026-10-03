@@ -66,8 +66,12 @@ export const passengerProfileSchema = z.object({
   flightDisposition: z.enum(['calm', 'curious', 'nervous', 'enthusiastic']),
 }).strict();
 export type PassengerProfile = z.infer<typeof passengerProfileSchema>;
+export const tripTypeSchema = z.enum(['sightseeing', 'light-cargo', 'vip-executive', 'vip-special-event']);
+export type TripType = z.infer<typeof tripTypeSchema>;
+export const passengerGenerationSchema = z.object({ tripType: tripTypeSchema.default('sightseeing') }).strict();
 export const flightSessionInputSchema = z.object({
   passenger: passengerProfileSchema,
+  tripType: tripTypeSchema.default('sightseeing'),
   expectedDurationMinutes: z.number().int().min(1).max(1440),
   origin: shortText(120).optional(), destination: shortText(120).optional(),
 }).strict();
