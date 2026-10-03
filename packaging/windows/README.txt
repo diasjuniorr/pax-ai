@@ -34,3 +34,5 @@ No keys should be pasted into chat or committed to Git.
 
 Live simulator behavior and clean gaming-laptop prerequisites remain to be
 verified on the target machine. CI checks are not a live flight acceptance.
+
+This agent also reads optional simulator precipitation, local cloud, particle visibility and wind. The dashboard shows these for checking against the simulator. Weather accuracy still requires a live flight test; missing readings remain unknown.

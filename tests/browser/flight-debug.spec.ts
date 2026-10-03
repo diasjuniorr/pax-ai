@@ -28,6 +28,18 @@ test('flight-event debug shows identity, events and suppression, and clears on d
   await expect(page.locator('#aircraft-identity')).toContainText(event.aircraftId);
   await expect(page.locator('#aircraft-identity script')).toHaveCount(0);
   await expect(page.locator('#flight-events')).toContainText('TAKEOFF · HIGH · ACCEPTED');
+  await expect(page.locator('#weather-status')).toContainText('unavailable');
+  const live = { ...snapshot, telemetryState: 'live', lastReceivedAt: 10000,
+    simulation: { active: true, generation, aircraftId: 'Test aircraft' },
+    telemetry: { timestamp: 10000, latitude: 40, longitude: -3, altitudeMslFeet: 500, altitudeAglFeet: 4,
+      indicatedAirspeedKnots: 0, verticalSpeedFpm: 0, headingTrueDegrees: 90, onGround: true,
+      gearExtensionPercent: 100, flapsLeftExtensionPercent: 0, flapsRightExtensionPercent: 0,
+      weather: { timestamp: 10000, visibilityMeters: 500, precipitation: 'rain', inCloud: true, windSpeedKnots: 25 } } };
+  socket.send(JSON.stringify(live));
+  await expect(page.locator('#weather-status')).toContainText('Precipitation: rain');
+  await expect(page.locator('#weather-status')).toContainText('In cloud: yes');
+  socket.send(JSON.stringify({ ...live, telemetryState: 'stale' }));
+  await expect(page.locator('#weather-status')).toContainText('unavailable');
   socket.send(JSON.stringify({ ...snapshot, flight: { ...snapshot.flight, status: 'inactive', phase: 'unknown', events: [] } }));
   await expect(page.locator('#detector-status')).toContainText('Suppressed');
   await expect(page.locator('#flight-events li')).toHaveCount(0);

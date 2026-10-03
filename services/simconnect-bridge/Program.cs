@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
@@ -58,6 +59,9 @@ internal static class Program
         FreeLibrary(native);
         if (Marshal.SizeOf(typeof(RawTelemetry)) != 352 || Marshal.OffsetOf(typeof(RawTelemetry), "Title").ToInt32() != 96)
             throw new InvalidOperationException("Unexpected telemetry interop layout: expected 12 doubles followed by STRING256");
+        if (Marshal.SizeOf(typeof(RawWeather)) != 32)
+            throw new InvalidOperationException("Unexpected weather interop layout: expected four doubles");
+        WeatherReading.CheckNormalization();
         Log("BRIDGE", "Runtime dependencies loaded successfully (x64, app-local SimConnect). Live MSFS connection not tested.");
     }
 
@@ -100,7 +104,7 @@ internal sealed class BridgeWindow : Control
 {
     private readonly BridgeConfiguration configuration;
     private const int SimMessage = 0x0402;
-    private enum DefinitionId : uint { Telemetry = 1 }
+    private enum DefinitionId : uint { Telemetry = 1, Weather = 2 }
     private enum RequestId : uint { Health = 3 }
     private enum EventId : uint { Sim = 10, Pause = 11, AircraftLoaded = 12, FlightLoaded = 13, PositionChanged = 14, CrashReset = 15 }
     private readonly object gate = new object();
@@ -110,6 +114,10 @@ internal sealed class BridgeWindow : Control
     private SimConnect sim;
     private bool connected;
     private object telemetry;
+    private object weather;
+    private DateTime weatherReceived;
+    private bool weatherEnabled;
+    private readonly Queue<uint> weatherPackets = new Queue<uint>();
     private string generation;
     private string aircraftId;
     private bool? running, paused;
@@ -158,7 +166,12 @@ internal sealed class BridgeWindow : Control
             };
             sim.OnRecvQuit += (sender, data) => { if (ReferenceEquals(sim, connection)) Disconnect("Simulator quit"); };
             sim.OnRecvException += (sender, data) => {
-                if (ReferenceEquals(sim, connection)) Disconnect("SDK exception " + data.dwException + " sendId=" + data.dwSendID + " index=" + data.dwIndex);
+                if (!ReferenceEquals(sim, connection)) return;
+                if (weatherPackets.Contains(data.dwSendID)) {
+                    DisableWeather("SDK weather exception " + data.dwException);
+                    return;
+                }
+                Disconnect("SDK exception " + data.dwException + " sendId=" + data.dwSendID + " index=" + data.dwIndex);
             };
             sim.OnRecvSystemState += (sender, data) => {
                 if (!ReferenceEquals(sim, connection)) return;
@@ -177,7 +190,17 @@ internal sealed class BridgeWindow : Control
                 if (ReferenceEquals(sim, connection) && IsLoadEvent(data.uEventID)) RestartSamples("Aircraft or flight loaded");
             };
             sim.OnRecvSimobjectData += (sender, data) => {
-                if (!ReferenceEquals(sim, connection) || data.dwRequestID != sampleRequest) return;
+                if (!ReferenceEquals(sim, connection)) return;
+                if (data.dwRequestID == sampleRequest + 1) {
+                    if (weatherEnabled) {
+                        lock (gate) {
+                            weatherReceived = DateTime.UtcNow;
+                            weather = WeatherReading.From((RawWeather)data.dwData[0], new DateTimeOffset(weatherReceived).ToUnixTimeMilliseconds());
+                        }
+                    }
+                    return;
+                }
+                if (data.dwRequestID != sampleRequest) return;
                 lastResponse = DateTime.UtcNow;
                 var raw = (RawTelemetry)data.dwData[0];
                 var title = (raw.Title ?? "").Trim();
@@ -187,7 +210,7 @@ internal sealed class BridgeWindow : Control
                         generation = Guid.NewGuid().ToString();
                         aircraftId = title;
                         slew = raw.Slew != 0;
-                        telemetry = null;
+                        telemetry = null; weather = null;
                         Program.Log("SIMCONNECT", "Aircraft identity or slew state changed");
                     }
                     if (telemetry == null) Program.Log("SIMCONNECT", "Telemetry subscription active: first sample received");
@@ -200,7 +223,9 @@ internal sealed class BridgeWindow : Control
                         onGround = raw.OnGround != 0,
                         gearExtensionPercent = raw.Gear,
                         flapsLeftExtensionPercent = raw.FlapsLeft * 100,
-                        flapsRightExtensionPercent = raw.FlapsRight * 100
+                        flapsRightExtensionPercent = raw.FlapsRight * 100,
+                        weather = weather != null && (DateTime.UtcNow - weatherReceived).TotalMilliseconds >= 0 &&
+                            (DateTime.UtcNow - weatherReceived).TotalMilliseconds <= 2500 ? weather : null
                     };
                 }
             };
@@ -225,6 +250,15 @@ internal sealed class BridgeWindow : Control
         Add("IS SLEW ACTIVE", "bool");
         sim.AddToDataDefinition(DefinitionId.Telemetry, "TITLE", "", SIMCONNECT_DATATYPE.STRING256, 0, SimConnect.SIMCONNECT_UNUSED);
         sim.RegisterDataDefineStruct<RawTelemetry>(DefinitionId.Telemetry);
+        // Separate definition: weather failures must not take down flight telemetry.
+        weatherEnabled = true;
+        try {
+            AddWeather("AMBIENT VISIBILITY", "meters");
+            AddWeather("AMBIENT PRECIP STATE", "mask");
+            AddWeather("AMBIENT IN CLOUD", "bool");
+            AddWeather("AMBIENT WIND VELOCITY", "knots");
+            sim.RegisterDataDefineStruct<RawWeather>(DefinitionId.Weather);
+        } catch (COMException) { DisableWeather("Weather subscription unavailable"); }
         subscribed = true;
         RestartSamples("SimConnect subscription started");
         sim.SubscribeToSystemEvent(EventId.Sim, "Sim");
@@ -244,18 +278,50 @@ internal sealed class BridgeWindow : Control
         lock (gate) {
             if (runningState.HasValue) running = runningState;
             if (pauseState.HasValue) paused = pauseState;
-            generation = Guid.NewGuid().ToString(); telemetry = null; aircraftId = null; slew = null;
+            generation = Guid.NewGuid().ToString(); telemetry = null; weather = null; aircraftId = null; slew = null;
         }
         if (subscribed && sim != null) {
             if (sampleRequestActive)
                 sim.RequestDataOnSimObject((RequestId)sampleRequest, DefinitionId.Telemetry, SimConnect.SIMCONNECT_OBJECT_ID_USER,
                     SIMCONNECT_PERIOD.NEVER, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
-            sampleRequest++;
+            if (sampleRequestActive && weatherEnabled) RequestWeather(SIMCONNECT_PERIOD.NEVER);
+            sampleRequest += 2; // Paired request IDs; old-generation weather callbacks are ignored.
             sim.RequestDataOnSimObject((RequestId)sampleRequest, DefinitionId.Telemetry, SimConnect.SIMCONNECT_OBJECT_ID_USER,
                 SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+            if (weatherEnabled) RequestWeather(SIMCONNECT_PERIOD.SECOND);
             sampleRequestActive = true;
         }
         Program.Log("SIMCONNECT", reason);
+    }
+
+    private void RememberWeatherPacket()
+    {
+        uint packet;
+        sim.GetLastSentPacketID(out packet);
+        weatherPackets.Enqueue(packet);
+        while (weatherPackets.Count > 32) weatherPackets.Dequeue();
+    }
+
+    private void AddWeather(string name, string units)
+    {
+        sim.AddToDataDefinition(DefinitionId.Weather, name, units, SIMCONNECT_DATATYPE.FLOAT64, 0, SimConnect.SIMCONNECT_UNUSED);
+        RememberWeatherPacket();
+    }
+
+    private void RequestWeather(SIMCONNECT_PERIOD period)
+    {
+        try {
+            sim.RequestDataOnSimObject((RequestId)(sampleRequest + 1), DefinitionId.Weather, SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                period, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+            RememberWeatherPacket();
+        } catch (COMException) { DisableWeather("Weather request unavailable"); }
+    }
+
+    private void DisableWeather(string reason)
+    {
+        lock (gate) { weather = null; telemetry = null; }
+        if (weatherEnabled) Program.Log("SIMCONNECT", reason + "; continuing flight telemetry without weather");
+        weatherEnabled = false;
     }
 
     private void Add(string name, string units) => sim.AddToDataDefinition(
@@ -277,10 +343,10 @@ internal sealed class BridgeWindow : Control
         sim = null;
         bool wasConnected;
         lock (gate) {
-            wasConnected = connected; connected = false; telemetry = null;
+            wasConnected = connected; connected = false; telemetry = null; weather = null;
             generation = null; aircraftId = null; running = paused = slew = null;
         }
-        subscribed = false;
+        subscribed = false; weatherEnabled = false; weatherPackets.Clear();
         sampleRequestActive = false;
         try { old?.Dispose(); } catch (COMException) { }
         nextAttempt = DateTime.UtcNow.AddSeconds(2);
@@ -390,4 +456,41 @@ internal struct RawTelemetry
         OnGround, Gear, FlapsLeft, FlapsRight, Slew;
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
     public string Title;
+}
+
+// Independent of RawTelemetry so missing weather never invalidates core telemetry.
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal struct RawWeather
+{
+    public double VisibilityMeters, PrecipitationMask, InCloud, WindSpeedKnots;
+}
+
+internal static class WeatherReading
+{
+    private static double? Bounded(double value, double maximum) =>
+        !double.IsNaN(value) && !double.IsInfinity(value) && value >= 0 && value <= maximum ? (double?)value : null;
+    private static string Precipitation(double mask)
+    {
+        // Documented flags: none=2, rain=4, snow=8. Unknown/conflicting flags stay unknown.
+        if (mask == 2) return "none";
+        if (mask == 4) return "rain";
+        if (mask == 8) return "snow";
+        if (mask == 12) return "rain-and-snow";
+        return null;
+    }
+    private static bool? Cloud(double value) => double.IsNaN(value) || double.IsInfinity(value) ? (bool?)null : value != 0;
+    internal static object From(RawWeather raw, long timestamp) => new {
+        timestamp,
+        visibilityMeters = Bounded(raw.VisibilityMeters, 200000),
+        precipitation = Precipitation(raw.PrecipitationMask),
+        inCloud = Cloud(raw.InCloud),
+        windSpeedKnots = Bounded(raw.WindSpeedKnots, 300)
+    };
+    internal static void CheckNormalization()
+    {
+        if (Cloud(-1) != true || Cloud(0) != false || Cloud(double.NaN) != null || Precipitation(0) != null || Precipitation(6) != null || Precipitation(double.NaN) != null ||
+            Precipitation(2) != "none" || Precipitation(4) != "rain" || Precipitation(8) != "snow" || Precipitation(12) != "rain-and-snow" ||
+            Bounded(double.NaN, 300) != null || Bounded(-1, 300) != null || Bounded(301, 300) != null || Bounded(0, 300) != 0)
+            throw new InvalidOperationException("Weather normalization check failed");
+    }
 }

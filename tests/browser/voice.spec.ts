@@ -57,6 +57,7 @@ test('voice preview holds/mutes microphone, waits for playback, and releases res
         send: (value: string) => { const event = JSON.parse(value); fixture.sent.push(event.type);
           if (event.type === 'response.create') {
             if (!event.response?.instructions) throw new Error('Missing per-turn context');
+            if (event.response.instructions !== 'Fresh flight context fixture' && event.response.instructions !== 'Automatic takeoff context fixture') throw new Error('Per-turn context was not preserved');
             if (event.response.instructions === 'Automatic takeoff context fixture')
               setTimeout(() => fixture.emit({ type: 'response.created', response: { id: 'auto-fixture' } }), 0);
           }

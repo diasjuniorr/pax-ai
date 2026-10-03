@@ -7,7 +7,7 @@ import './voice';
 import './reactions';
 import { renderFlightDebug } from './flight-debug';
 const element = (id: string) => document.getElementById(id)!;
-const fields: [keyof AircraftTelemetry, string, string, number][] = [
+const fields: [Exclude<keyof AircraftTelemetry, 'weather'>, string, string, number][] = [
   ['altitudeMslFeet', 'Altitude MSL', 'ft', 0], ['altitudeAglFeet', 'AGL', 'ft', 0],
   ['indicatedAirspeedKnots', 'Indicated airspeed', 'kt', 1], ['verticalSpeedFpm', 'Vertical speed', 'ft/min', 0],
   ['headingTrueDegrees', 'Heading (true)', '°', 1], ['gearExtensionPercent', 'Gear', '%', 1],
@@ -20,7 +20,7 @@ for (const [key, label] of fields) {
   const cell = document.createElement('td'); cell.id = key; cell.textContent = '—';
   row.append(heading, cell); element('values').append(row);
 }
-function clear() { for (const [key] of fields) element(key).textContent = '—'; }
+function clear() { element('weather-status').textContent = 'Simulator weather: unavailable'; for (const [key] of fields) element(key).textContent = '—'; }
 let lastMessage = 0;
 let socket: WebSocket;
 let reconnectDelay = 1000;
@@ -44,6 +44,12 @@ function connect() {
     element('freshness').textContent = `Telemetry: ${state.telemetryState.toUpperCase()}${state.telemetry ? ' · captured ' + new Date(state.telemetry.timestamp).toLocaleTimeString() : ''}`;
     element('values').classList.toggle('stale', state.telemetryState === 'stale');
     if (!state.telemetry) { clear(); return; }
+    const weather = state.telemetry.weather;
+    const weatherAge = weather ? state.telemetry.timestamp - weather.timestamp : -1;
+    element('weather-status').textContent = state.telemetryState !== 'live' || !state.simulation?.active || !weather || weatherAge < 0 || weatherAge > 2500
+      ? 'Simulator weather: unavailable (older agent, inactive flight or missing readings)'
+      : `Simulator weather · Precipitation: ${weather.precipitation ?? 'unknown'} · In cloud: ${weather.inCloud === null ? 'unknown' : weather.inCloud ? 'yes' : 'no'} · Particle visibility: ${weather.visibilityMeters === null ? 'unknown' : Math.round(weather.visibilityMeters) + ' m'} · Wind: ${weather.windSpeedKnots === null ? 'unknown' : Math.round(weather.windSpeedKnots) + ' kt'}. These readings do not establish clear skies.`;
+
     for (const [key, , unit, decimals] of fields) {
       const value = state.telemetry[key];
       element(key).textContent = typeof value === 'boolean' ? (value ? 'YES' : 'NO') : `${value.toFixed(decimals)} ${unit}`;

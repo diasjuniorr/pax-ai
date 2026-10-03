@@ -4,10 +4,10 @@ import { flightSessionInputSchema, flightSessionSchema, passengerProfileSchema, 
 
 // Coherent starter profiles; generation is one source of the same editable model.
 const profiles: PassengerProfile[] = [
-  { name: 'Sofia Martins', age: 34, gender: 'Woman', occupation: 'Architect', tripReason: 'Visiting a friend for a long weekend', personalityTraits: ['observant', 'warm', 'thoughtful'], flightDisposition: 'curious' },
-  { name: 'Daniel Reed', age: 46, gender: 'Man', occupation: 'Teacher', tripReason: 'Traveling to a family reunion', personalityTraits: ['friendly', 'patient', 'talkative'], flightDisposition: 'calm' },
-  { name: 'Alex Chen', age: 27, gender: 'Nonbinary', occupation: 'Photographer', tripReason: 'Taking landscape photos on a short holiday', personalityTraits: ['creative', 'inquisitive', 'adventurous'], flightDisposition: 'enthusiastic' },
-  { name: 'Maya Patel', age: 39, gender: 'Woman', occupation: 'Baker', tripReason: 'Visiting a sibling who recently moved away', personalityTraits: ['kind', 'practical', 'reserved'], flightDisposition: 'nervous' },
+  { name: 'Sofia Martins', age: 34, gender: 'Woman', voice: 'marin', occupation: 'Architect', tripReason: 'Visiting a friend for a long weekend', personalityTraits: ['observant', 'warm', 'thoughtful'], flightDisposition: 'curious' },
+  { name: 'Daniel Reed', age: 46, gender: 'Man', voice: 'cedar', occupation: 'Teacher', tripReason: 'Traveling to a family reunion', personalityTraits: ['friendly', 'patient', 'talkative'], flightDisposition: 'calm' },
+  { name: 'Alex Chen', age: 27, gender: 'Nonbinary', voice: 'sage', occupation: 'Photographer', tripReason: 'Taking landscape photos on a short holiday', personalityTraits: ['creative', 'inquisitive', 'adventurous'], flightDisposition: 'enthusiastic' },
+  { name: 'Maya Patel', age: 39, gender: 'Woman', voice: 'marin', occupation: 'Baker', tripReason: 'Visiting a sibling who recently moved away', personalityTraits: ['kind', 'practical', 'reserved'], flightDisposition: 'nervous' },
 ];
 export function generatePassenger(tripType: TripType = 'sightseeing'): PassengerProfile {
   const reasons = tripReasons[tripType];

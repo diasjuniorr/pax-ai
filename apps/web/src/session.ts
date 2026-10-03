@@ -12,7 +12,7 @@ let revision = 0;
 function controls() { fields.disabled = busy || !available || !!session; end.hidden = !session; end.disabled = busy || !available; }
 function populate(profile: PassengerProfile) {
   for (const [id, value] of Object.entries({ name: profile.name, age: profile.age, gender: profile.gender,
-    occupation: profile.occupation, reason: profile.tripReason, traits: profile.personalityTraits.join(', '), disposition: profile.flightDisposition })) {
+    occupation: profile.occupation, reason: profile.tripReason, traits: profile.personalityTraits.join(', '), disposition: profile.flightDisposition, voice: profile.voice })) {
     field(`passenger-${id}`).value = String(value);
   }
 }
@@ -64,7 +64,7 @@ document.getElementById('session-form')!.addEventListener('submit', event => {
     gender: field('passenger-gender').value, occupation: field('passenger-occupation').value,
     tripReason: field('passenger-reason').value,
     personalityTraits: field('passenger-traits').value.split(',').map(value => value.trim()),
-    flightDisposition: field('passenger-disposition').value,
+    flightDisposition: field('passenger-disposition').value, voice: field('passenger-voice').value,
   }, expectedDurationMinutes: Number(field('flight-duration').value),
   origin: field('flight-origin').value.trim() || undefined, destination: field('flight-destination').value.trim() || undefined });
   if (!input.success) { error.textContent = input.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '); return; }

@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z, ZodError } from 'zod';
 import { passengerGenerationSchema, voiceOwnerSchema, type ServerSnapshot } from '@pax/shared';
 import { ReactionCoordinator } from './reactions';
-import { flightContext } from './flight-context';
+import { flightContext, contextDiagnostics } from './flight-context';
 import { FlightSessionStore, generatePassenger } from './passenger';
 import { buildPassengerContext, ConversationError, ConversationStore, type ConversationOptions } from './conversation';
 import { VoiceStore, type VoiceOptions } from './voice';
@@ -53,8 +53,10 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
         const reaction = req.url === '/api/voice/reaction' ? reactions.claim(input.idle === true) : null;
         if (req.url === '/api/voice/reaction' && !reaction) { send(200, { turn: null }); return; }
         const flight = flightContext(snapshot);
+        options.log?.('Voice context prepared', { sessionId: session.id, connectionId: input.connectionId,
+          ...(reaction ? { eventId: reaction.id } : {}), ...contextDiagnostics(flight) });
         send(200, { turn: { instructions: buildPassengerContext(session, snapshot, reaction?.perception),
-          generation: flight.available ? flight.generation : null,
+          generation: flight.available ? snapshot!.simulation!.generation : null,
           validForMs: Math.max(0, Math.min(2000, reaction ? reaction.expires - Date.now() : 2000,
             flight.available ? 3000 - (Date.now() - snapshot!.lastReceivedAt!) : 2000)),
           ...(reaction ? { reactionId: reaction.id, reactionRemainingMs: Math.max(0, reaction.expires - Date.now()) } : {}),

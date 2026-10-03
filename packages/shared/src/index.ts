@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
 const finite = z.number().finite();
+// Optional enrichment: invalid/missing readings are unknown, never invented defaults.
+export const simulatorWeatherSchema = z.object({
+  timestamp: finite.int().nonnegative(),
+  visibilityMeters: finite.min(0).max(200000).nullable().catch(null),
+  precipitation: z.enum(['none', 'rain', 'snow', 'rain-and-snow']).nullable().catch(null),
+  inCloud: z.boolean().nullable().catch(null),
+  windSpeedKnots: finite.min(0).max(300).nullable().catch(null),
+});
+export type SimulatorWeather = z.infer<typeof simulatorWeatherSchema>;
 export const aircraftTelemetrySchema = z.object({
   timestamp: finite.int().nonnegative(), // UTC Unix milliseconds, bridge capture time
   latitude: finite.min(-90).max(90),
@@ -14,6 +23,7 @@ export const aircraftTelemetrySchema = z.object({
   gearExtensionPercent: finite.min(0).max(100),
   flapsLeftExtensionPercent: finite.min(0).max(100),
   flapsRightExtensionPercent: finite.min(0).max(100),
+  weather: simulatorWeatherSchema.nullable().optional().catch(null),
 });
 export type AircraftTelemetry = z.infer<typeof aircraftTelemetrySchema>;
 
@@ -58,12 +68,15 @@ export const serverSnapshotSchema = z.object({
 export type ServerSnapshot = z.infer<typeof serverSnapshotSchema>;
 
 const shortText = (max: number) => z.string().trim().min(1).max(max);
+export const passengerVoiceSchema = z.enum(['marin', 'cedar', 'coral', 'ash', 'sage', 'verse']);
+export type PassengerVoice = z.infer<typeof passengerVoiceSchema>;
 export const passengerProfileSchema = z.object({
   name: shortText(80), age: z.number().int().min(1).max(120),
   gender: shortText(60), occupation: shortText(100), tripReason: shortText(400),
   personalityTraits: z.array(shortText(40)).min(1).max(6).refine(values =>
     new Set(values.map(value => value.toLowerCase())).size === values.length, 'Use distinct personality traits'),
   flightDisposition: z.enum(['calm', 'curious', 'nervous', 'enthusiastic']),
+  voice: passengerVoiceSchema.default('marin'),
 }).strict();
 export type PassengerProfile = z.infer<typeof passengerProfileSchema>;
 export const tripTypeSchema = z.enum(['sightseeing', 'light-cargo', 'vip-executive', 'vip-special-event']);
@@ -132,7 +145,8 @@ const debugFields = new Set(['sessionId', 'connectionId', 'requestId', 'response
   'timestamp', 'event', 'type', 'status', 'reason', 'forward', 'durationMs', 'inputTokens', 'outputTokens',
   'sampleTimestamp', 'altitudeAglFeet', 'indicatedAirspeedKnots', 'verticalSpeedFpm', 'phase', 'automatic',
   'eventTimestamp', 'evaluatedAt', 'eventAgeMs', 'detectedAt', 'detectionAgeMs', 'receiptAgeMs', 'gateForward', 'gateReason', 'detectorStatus',
-  'telemetryState', 'simulationActive', 'generationMatches', 'aircraftMatches']);
+  'telemetryState', 'simulationActive', 'generationMatches', 'aircraftMatches', 'voice',
+  'contextAvailable', 'weatherAvailable', 'weatherPrecipitation', 'weatherVisibility', 'weatherCloud', 'weatherWind']);
 export function debugDetails(input: Record<string, unknown> = {}): DebugEntry['details'] {
   const output: DebugEntry['details'] = {};
   for (const [key, value] of Object.entries(input)) {

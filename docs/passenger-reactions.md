@@ -1,6 +1,6 @@
 # Flight-aware passenger and optional reactions
 
-Implemented for text and browser voice; live model/audio acceptance is still required. The existing Windows agent package supplies everything needed for this change.
+Implemented for text and browser voice. Automatic takeoff speech is user-confirmed with matching playback logs; landing and full recovery acceptance remain pending. Existing Windows agents support events; optional weather requires the newer agent. See [passenger awareness](passenger-awareness.md).
 
 ## Try it
 
@@ -18,7 +18,7 @@ Implemented for text and browser voice; live model/audio acceptance is still req
 ## Responsibilities
 
 - `flight-context.ts`: allowlisted point-in-time observations (aircraft, basic phase, ground state, altitude/AGL, airspeed and vertical motion). Requires live, active, identified telemetry with a backend receipt age of at most 3 seconds. No location enrichment, scenery, weather or approach inference. Unavailable context is explicit. Motion describes the latest reading, not a newly confirmed phase.
-- `buildPassengerContext`: one bounded context builder for text and every voice response. Profile/route/aircraft strings are data, not instructions. Past conversation observations are not authoritative current state. Profile and route do not establish actual arrival, destination visibility or time remaining.
+- `buildPassengerContext`: one bounded context builder for text and every voice response, now supplying qualitative observations rather than instrument readings. Profile/route/aircraft strings are data, not instructions. Past conversation observations are not authoritative current state. Profile and route do not establish actual arrival, destination visibility or time remaining.
 - `ReactionCoordinator`: perception maps TAKEOFF/LANDING to a passenger observation. Deterministic eligibility checks event gate, freshness, identity, setting and cooldown; disposition guides delivery. The MVP does not simulate emotions or assign numeric salience scores. Keeps one pending event, expires 15 seconds after backend detection, enforces a 30-second dispatch cooldown, and retains 20 diagnostic decisions. No LLM calls for classification or policy.
 - Server API: dashboard authentication and same-origin mutation rules apply. Voice context/dispatch also require the current unexpired voice owner. Settings reset each passenger session. Starting/reconnecting voice discards pending work; previous events are never replayed. Native telemetry cannot submit prompts.
 - Browser coordinator: polls for an eligible event while connected, opted in, visible and receiving live flight state. Only idle voice may claim; processing/listening/speaking defer. PTT gets a 1.5-second grace period. It rechecks idle, context, generation, elapsed request time and pilot activity after HTTP returns. Expired/late results are dropped without automatic retry. The remaining event lifetime also bounds automatic generation/playback.

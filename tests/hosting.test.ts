@@ -185,6 +185,12 @@ test('real bridge events reach protected reaction controls and owner-only voice 
   assert.equal((await post('/api/reactions', { sessionId: session.id, enabled: true }, { Origin: 'null' })).status, 403);
   assert.equal((await post('/api/reactions', { sessionId: session.id, enabled: true })).status, 200);
   assert.equal((await post('/api/voice/start', { ...owner, sdp: 'v=0\r\n' })).status, 200);
+  const unknownTurn = await (await post('/api/voice/turn', owner)).json() as { turn: { instructions: string } };
+  const unknownContext = JSON.parse(unknownTurn.turn.instructions.split('\n').at(-1)!).currentFlight;
+  assert.equal(unknownContext.weather.available, false);
+  assert.equal(unknownContext.weather.visibility, 'unknown');
+  assert.match(unknownTurn.turn.instructions, /If asked about missing weather or visibility/);
+
   assert.equal((await post('/api/voice/turn', { ...owner, instructions: 'Injected' })).status, 400);
   assert.equal((await post('/api/voice/turn', { ...owner, connectionId: session.id })).status, 409);
   const viewer = ws('/telemetry', { Cookie: cookie, Origin: origin });
@@ -202,7 +208,8 @@ test('real bridge events reach protected reaction controls and owner-only voice 
       telemetry: { timestamp, latitude: 40, longitude: -3, altitudeMslFeet: 3000,
         altitudeAglFeet: i < 3 ? 0 : (i - 2) * 10, verticalSpeedFpm: i < 3 ? 0 : 500,
         onGround: i < 3, indicatedAirspeedKnots: 80, headingTrueDegrees: 90,
-        gearExtensionPercent: 0, flapsLeftExtensionPercent: 0, flapsRightExtensionPercent: 0 } }));
+        gearExtensionPercent: 0, flapsLeftExtensionPercent: 0, flapsRightExtensionPercent: 0,
+        weather: { timestamp, visibilityMeters: 500, precipitation: 'rain', inCloud: true, windSpeedKnots: 25 } } }));
     await received;
   }
   const busy = await (await post('/api/voice/reaction', { ...owner, idle: false })).json() as { turn: unknown };
@@ -212,6 +219,13 @@ test('real bridge events reach protected reaction controls and owner-only voice 
   const reply = await (await post('/api/voice/reaction', { ...owner, idle: true })).json() as { turn: { instructions: string; generation: string } };
   assert.equal(reply.turn.generation, generation); assert.match(reply.turn.instructions, /aircraft has taken off/);
   assert.match(reply.turn.instructions, /climbing/);
+  const context = JSON.parse(reply.turn.instructions.split('\n').at(-1)!).currentFlight;
+  assert.equal(context.weather.precipitation, 'rain');
+  assert.equal(context.weather.visibility, 'obscured by cloud');
+  assert.doesNotMatch(JSON.stringify(context), /\d/);
+  const manualTurn = await (await post('/api/voice/turn', owner)).json() as { turn: { instructions: string } };
+  assert.deepEqual(JSON.parse(manualTurn.turn.instructions.split('\n').at(-1)!).currentFlight, context);
+
   assert.equal((await (await post('/api/voice/reaction', { ...owner, idle: true })).json() as { turn: unknown }).turn, null);
   const gone = new Promise<void>(resolve => { const listener = (data: Buffer) => { if (!JSON.parse(data.toString()).bridgeConnected) { viewer.off('message', listener); resolve(); } }; viewer.on('message', listener); });
   bridge.close(); await gone;

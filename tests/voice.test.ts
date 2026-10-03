@@ -21,6 +21,7 @@ test('voice adapter creates a bounded manual-turn call with server credentials a
       assert.equal(config.instructions, 'Test profile');
       assert.equal(config.model, 'gpt-realtime');
       assert.equal(config.audio.input.turn_detection, null);
+      assert.equal(config.audio.output.voice, 'cedar');
       assert.equal(config.truncation.token_limits.post_instructions, 6000);
       assert.equal(config.max_output_tokens, 512);
       assert.deepEqual(config.output_modalities, ['audio']);
@@ -29,7 +30,7 @@ test('voice adapter creates a bounded manual-turn call with server credentials a
     assert.equal(url, 'https://api.openai.com/v1/realtime/calls/rtc_test/hangup');
     return new Response(null, { status: 200 });
   })!;
-  const call = await provider('v=0\r\n', 'Test profile');
+  const call = await provider('v=0\r\n', 'Test profile', 'cedar');
   assert.equal(call.sdp, 'v=0\r\nanswer');
   await call.close(); assert.equal(calls, 2);
   assert.equal(createVoiceProvider(''), undefined);

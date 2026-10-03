@@ -52,6 +52,7 @@ test('passenger can be generated, edited, started, restored on reload and ended'
   await expect(page.getByLabel('Reason for traveling')).not.toHaveValue('');
   await page.getByLabel('Reason for traveling').fill('Escorting a repaired violin for a family friend.');
   await page.getByLabel('Name', { exact: true }).fill('My passenger');
+  await page.getByLabel('Passenger voice', { exact: true }).selectOption('cedar');
   await page.getByLabel('Expected duration').fill('90');
   await page.getByLabel('Origin (optional)').fill('Madrid');
   await page.getByLabel('Destination (optional)').fill('Lisbon');
@@ -62,6 +63,8 @@ test('passenger can be generated, edited, started, restored on reload and ended'
   await expect(page.locator('#session-status')).toHaveText('Session active');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('My passenger');
   await expect(page.getByLabel('Trip type', { exact: true })).toHaveValue('light-cargo');
+  await expect(page.getByLabel('Passenger voice', { exact: true })).toHaveValue('cedar');
+  await expect(page.getByLabel('Passenger voice', { exact: true })).toBeDisabled();
   await expect(page.getByLabel('Reason for traveling')).toHaveValue('Escorting a repaired violin for a family friend.');
   await expect(page.getByRole('button', { name: 'Start session', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'End session', exact: true }).click();

@@ -19,11 +19,13 @@
 <label>Name<input id="passenger-name" required maxlength="80" placeholder="Passenger name"></label>
 <label>Age<input id="passenger-age" type="number" min="1" max="120" required placeholder="Years"></label>
 <label>Gender<input id="passenger-gender" required maxlength="60"></label>
+<label>Passenger voice<select id="passenger-voice" aria-label="Passenger voice"><option value="marin">Marin</option><option value="cedar">Cedar</option><option value="coral">Coral</option><option value="ash">Ash</option><option value="sage">Sage</option><option value="verse">Verse</option></select></label>
 <label>Occupation<input id="passenger-occupation" required maxlength="100"></label>
 <label>Flight disposition<select id="passenger-disposition"><option value="calm">Calm</option><option value="curious">Curious</option><option value="nervous">Nervous</option><option value="enthusiastic">Enthusiastic</option></select></label>
 <label>Personality traits (comma-separated, up to 6)<input id="passenger-traits" required maxlength="245" placeholder="Thoughtful, curious"></label>
 <label class="wide">Reason for traveling<textarea id="passenger-reason" required maxlength="400" placeholder="What brings them on this journey?"></textarea></label>
 </div>
+<p class="hint">Generated passengers have a suggested voice. Choose any voice before starting the session; start a new session to change it.</p>
 <div class="route-heading"><span>FLIGHT PLAN</span><span aria-hidden="true">DEPARTURE ─── ARRIVAL</span></div>
 <div class="form-grid"><label>Origin (optional)<input id="flight-origin" maxlength="120" placeholder="Airport or city"></label>
 <label>Destination (optional)<input id="flight-destination" maxlength="120" placeholder="Airport or city"></label>
@@ -53,7 +55,7 @@
 </div>
 <div id="flight-monitor" class="monitor-heading"><div><p class="eyebrow">03 / FLIGHT MONITOR</p><h2>A view from the cockpit.</h2></div><span class="tag">SIMULATOR DIAGNOSTICS</span></div>
 <div class="monitor-grid">
-<section class="panel" aria-labelledby="telemetry-heading"><div class="panel-heading"><h2 id="telemetry-heading">Simulator telemetry</h2><span class="section-symbol" aria-hidden="true">⌁</span></div><p id="freshness" class="status-line" role="status">Waiting for telemetry</p><table><caption class="sr-only">Current simulator readings</caption><tbody id="values"></tbody></table><p class="hint">Heading is true north. Gear and flaps show actual extension.</p></section>
+<section class="panel" aria-labelledby="telemetry-heading"><div class="panel-heading"><h2 id="telemetry-heading">Simulator telemetry</h2><span class="section-symbol" aria-hidden="true">⌁</span></div><p id="freshness" class="status-line" role="status">Waiting for telemetry</p><table><caption class="sr-only">Current simulator readings</caption><tbody id="values"></tbody></table><p id="weather-status" class="hint">Simulator weather: unavailable</p><p class="hint">Heading is true north. Gear and flaps show actual extension.</p></section>
 <section class="panel" aria-labelledby="flight-events-heading"><div class="panel-heading"><h2 id="flight-events-heading">Flight events · validation</h2><span class="tag">EVENT LOG</span></div>
 <p id="detector-status" class="status-line" role="status">Waiting for detector state</p><p id="aircraft-identity">Aircraft: —</p><p id="flight-generation">Generation: —</p>
 <div class="event-history"><ol id="flight-events" aria-label="Detected flight events"></ol><p class="events-empty">No flight events in this segment.<br><span>Detections will appear here as you fly.</span></p></div>

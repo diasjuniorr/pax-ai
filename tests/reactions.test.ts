@@ -32,12 +32,13 @@ test('flight context allows bounded fresh facts and fails closed for stale, paus
   const f = fixture();
   assert.equal(flightContext(f.snapshot, f.now()).available, true);
   const context = buildPassengerContext(f.session, f.snapshot);
-  assert.match(context, /climbing/); assert.match(context, /3000/);
+  assert.match(context, /climbing/); assert.doesNotMatch(context, /3000|"heightFeetAgl"|"airspeedKnots"|"verticalSpeedFeetPerMinute"/);
   assert.doesNotMatch(context, /"latitude"|"longitude"|"headingTrueDegrees"/);
   for (const snapshot of [ { ...f.snapshot, telemetryState: 'stale' as const }, { ...f.snapshot, bridgeConnected: false },
     { ...f.snapshot, simulation: { ...f.snapshot.simulation!, active: false } }, { ...f.snapshot, simulation: undefined },
     { ...f.snapshot, lastReceivedAt: f.now() - 3001 }, { ...f.snapshot, lastReceivedAt: f.now() + 100 } ]) {
-    assert.deepEqual(flightContext(snapshot, f.now()), { available: false });
+    assert.equal(flightContext(snapshot, f.now()).available, false);
+    assert.equal(flightContext(snapshot, f.now()).weather.available, false);
     assert.match(buildPassengerContext(f.session, snapshot), /"available":false/);
   }
 });

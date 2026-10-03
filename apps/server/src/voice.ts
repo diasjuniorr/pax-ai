@@ -1,19 +1,19 @@
 import { z } from 'zod';
-import { voiceOwnerSchema, voiceStartSchema, type FlightSession } from '@pax/shared';
+import { voiceOwnerSchema, voiceStartSchema, type FlightSession, type PassengerVoice } from '@pax/shared';
 import { buildPassengerContext, ConversationError } from './conversation';
 
 export type VoiceCall = { sdp: string; close: () => Promise<void> };
-export type VoiceProvider = (sdp: string, instructions: string) => Promise<VoiceCall>;
+export type VoiceProvider = (sdp: string, instructions: string, voice?: PassengerVoice) => Promise<VoiceCall>;
 export type VoiceOptions = { provider?: VoiceProvider; now?: () => number; log?: (message: string, details?: Record<string, unknown>) => void };
 
 export function createVoiceProvider(key: string | undefined, model = 'gpt-realtime', fetcher: typeof fetch = fetch): VoiceProvider | undefined {
   if (!key?.trim()) return undefined;
-  return async (sdp, instructions) => {
+  return async (sdp, instructions, voice = 'marin') => {
     const body = new FormData();
     body.set('sdp', sdp);
     body.set('session', JSON.stringify({ type: 'realtime', model, instructions,
       output_modalities: ['audio'], max_output_tokens: 512,
-      audio: { input: { turn_detection: null }, output: { voice: 'marin' } },
+      audio: { input: { turn_detection: null }, output: { voice } },
       truncation: { type: 'retention_ratio', retention_ratio: 0.8, token_limits: { post_instructions: 6000 } },
     }));
     const response = await fetcher('https://api.openai.com/v1/realtime/calls', {
@@ -71,9 +71,9 @@ export class VoiceStore {
     if (!this.options.provider) throw new ConversationError(503, 'Voice needs OPENAI_API_KEY in the server environment.');
     const lease: Lease = { sessionId: input.sessionId, connectionId: input.connectionId, startedAt: this.now(), expiresAt: this.now() + 45000 };
     this.lease = lease;
-    this.options.log?.('Voice connecting', { sessionId: lease.sessionId, connectionId: lease.connectionId });
+    this.options.log?.('Voice connecting', { sessionId: lease.sessionId, connectionId: lease.connectionId, voice: session.passenger.voice });
     try {
-      const call = await this.options.provider(input.sdp, buildPassengerContext(session));
+      const call = await this.options.provider(input.sdp, buildPassengerContext(session), session.passenger.voice);
       if (this.lease !== lease) {
         await this.dispose(call);
         throw new ConversationError(409, 'The session or voice connection ended while connecting.');

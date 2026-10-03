@@ -10,7 +10,7 @@ The long-term objective is believable passengers who hold natural realtime voice
 
 **Current milestones:** Milestone 1 — Windows Live Acceptance remains pending; Phase 2 passenger/profile/session and text-conversation foundations are implemented under the user's explicit authorization to work without the laptop.
 
-**Next action:** Validate flight-aware answers and optional takeoff/landing comments with the existing Windows agent using [passenger reactions](passenger-reactions.md). The user confirmed real MSFS connectivity and updating telemetry on 2026-09-25/26. The October 3 log confirms takeoff detection/gate acceptance and a completed voice playback lifecycle. Automatic audible reactions, landing, pause/reconnect recovery and foreground HOTAS acceptance remain pending.
+**Next action:** Validate flight-aware answers and optional takeoff/landing comments with the existing Windows agent using [passenger reactions](passenger-reactions.md). The user confirmed real MSFS connectivity and updating telemetry on 2026-09-25/26. The October 3 log confirms takeoff detection/gate acceptance and a completed voice playback lifecycle. Automatic takeoff speech is now confirmed by the user and correlated playback logs. Landing, full pause/reconnect recovery and foreground HOTAS acceptance remain pending.
 
 
 **Sign-in fix — 2026-09-22:** The user deployed `https://pax-ai-2zo8.onrender.com` and encountered Forbidden at sign-in. Confirmed the live response used `Referrer-Policy: no-referrer`; a native browser form reproduced `Origin: null`. Changed policy to `same-origin` while retaining strict origin validation. Browser regression now verifies the real form origin, successful login, secure cookie and dashboard access in a new tab/reload. Build and eight backend tests passed locally. Windows CI, including the browser regression, passed in [run 35679867941](https://github.com/diasjuniorr/pax-ai/actions/runs/35679867941) for fix commit `41e02e2`. The user subsequently confirmed successful sign-in and dashboard display on the live Render service.
@@ -66,6 +66,16 @@ Last reviewed: 2026-09-22 against source, package boundaries, tests, [README](..
 - Voice disconnected before the takeoff; the old log did not identify why. New fixed reason codes distinguish page hiding, user disconnect, microphone, heartbeat and transport failures without recording raw provider errors.
 - Verification: production build/typecheck, 56 backend tests, 6 browser tests and hosted smoke passed. Regressions cover clocks ahead/behind, unchanged expiry, repeated snapshots and bridge-to-voice delivery with the observed offset.
 - Next live test: deploy/refresh, start a passenger before takeoff, confirm silent PREVIEW, then test a new event with voice connected, automatic comments enabled and the dashboard visible. Existing Windows ZIP remains valid. Audible autonomous playback and landing/reset recovery remain pending.
+
+## Passenger awareness, weather and voice — 2026-10-03
+
+- [x] Live acceptance update: the latest export and user report confirm a correctly spoken automatic takeoff comment. Gate → queue → dispatch completed in 239 ms; source time about 3 seconds ahead no longer blocks it. Five manual replies completed playback. Voice recovered after a page-hidden disconnect; one provider hangup failure remains open.
+- [x] Replace model-visible instrument readings with qualitative motion and explicit unknown weather/location. No numerical AGL, altitude, speed or vertical speed is supplied to the passenger. Ground four-foot and direct-weather-question context regressions added for text/voice paths.
+- [x] Add optional local simulator precipitation, in-cloud, particle-visibility and wind enrichment. Independent weather subscription, null/invalid fallback, continuity clearing and separate sample freshness protect existing telemetry. High visibility/no rain do not establish clear skies. Old agents remain compatible with weather unavailable.
+- [x] Add six selectable passenger voices, curated starter-profile defaults, persisted selection and disposition-specific concise delivery. No model change, new API key, external weather service or database.
+- [x] Local validation: production build/typecheck, 63 backend tests, 6 browser tests and compiled-host smoke passed. Windows compilation and live weather/model acceptance tracked separately.
+- [ ] Live validation of new weather readouts, unknown handling and voice quality; numerical claims must stay absent. New Windows runtime required only for weather. See [design and test checklist](passenger-awareness.md).
+- [ ] Landing/reset acceptance, foreground HOTAS and provider hangup failure remain pending.
 
 ## Status legend
 
