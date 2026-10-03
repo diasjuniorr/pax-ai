@@ -296,8 +296,7 @@ internal sealed class BridgeWindow : Control
 
     private void RememberWeatherPacket()
     {
-        uint packet;
-        sim.GetLastSentPacketID(out packet);
+        uint packet = sim.GetLastSentPacketID();
         weatherPackets.Enqueue(packet);
         while (weatherPackets.Count > 32) weatherPackets.Dequeue();
     }
