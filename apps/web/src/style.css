@@ -104,3 +104,13 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px
 #reaction-decisions { max-height: 220px; overflow-y: auto; padding-left: 20px; font: 11px/1.8 var(--mono); overflow-wrap: anywhere; }
 #reaction-decisions:empty { display: none; }
 #reaction-decisions li { margin: 10px 0; }
+
+.debug-panel { margin-top: 28px; }
+.debug-toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.debug-toolbar label { flex: 1 1 160px; }
+#debug-entries { list-style: none; margin: 16px 0; padding: 0; max-height: 420px; overflow-y: auto; }
+#debug-entries li { display: flex; gap: 14px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+#debug-entries code { white-space: pre-wrap; overflow-wrap: anywhere; flex: 1; min-width: 0; font: 11px/1.8 var(--mono); }
+#debug-entries button { flex-shrink: 0; }
+#debug-entries [data-level="warn"] code { color: #ffd194; }
+#debug-entries [data-level="error"] code { color: #ffb6a6; }

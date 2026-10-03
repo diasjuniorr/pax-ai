@@ -4,7 +4,7 @@ import { buildPassengerContext, ConversationError } from './conversation';
 
 export type VoiceCall = { sdp: string; close: () => Promise<void> };
 export type VoiceProvider = (sdp: string, instructions: string) => Promise<VoiceCall>;
-export type VoiceOptions = { provider?: VoiceProvider; now?: () => number; log?: (message: string) => void };
+export type VoiceOptions = { provider?: VoiceProvider; now?: () => number; log?: (message: string, details?: Record<string, unknown>) => void };
 
 export function createVoiceProvider(key: string | undefined, model = 'gpt-realtime', fetcher: typeof fetch = fetch): VoiceProvider | undefined {
   if (!key?.trim()) return undefined;
@@ -58,7 +58,7 @@ export class VoiceStore {
   }
   async stop() {
     const lease = this.lease; this.lease = undefined;
-    if (lease) this.options.log?.('Voice disconnected');
+    if (lease) this.options.log?.('Voice disconnected', { sessionId: lease.sessionId, connectionId: lease.connectionId });
     if (lease?.call) await this.dispose(lease.call);
   }
   async expire() {
@@ -71,7 +71,7 @@ export class VoiceStore {
     if (!this.options.provider) throw new ConversationError(503, 'Voice needs OPENAI_API_KEY in the server environment.');
     const lease: Lease = { sessionId: input.sessionId, connectionId: input.connectionId, startedAt: this.now(), expiresAt: this.now() + 45000 };
     this.lease = lease;
-    this.options.log?.('Voice connecting');
+    this.options.log?.('Voice connecting', { sessionId: lease.sessionId, connectionId: lease.connectionId });
     try {
       const call = await this.options.provider(input.sdp, buildPassengerContext(session));
       if (this.lease !== lease) {
@@ -79,7 +79,7 @@ export class VoiceStore {
         throw new ConversationError(409, 'The session or voice connection ended while connecting.');
       }
       lease.call = call; lease.expiresAt = this.now() + 15000;
-      this.options.log?.('Voice connected');
+      this.options.log?.('Voice connected', { sessionId: lease.sessionId, connectionId: lease.connectionId });
       return { sdp: call.sdp };
     } catch (error) {
       if (this.lease === lease) this.lease = undefined;

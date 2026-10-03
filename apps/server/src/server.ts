@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
+import { DebugLog } from './debug-log';
 import { bridgeMessageSchema } from '@pax/shared';
 import { TelemetryStore, FlightIntelligence } from '@pax/telemetry';
 import { createHostedAccess, type HostedOptions } from './hosting';
@@ -10,6 +11,9 @@ import type { VoiceOptions } from './voice';
 export function createTelemetryServer(log = (component: string, message: string, details = {}) => {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), component, message, ...details }));
 }, hosted?: HostedOptions, conversationOptions: ConversationOptions = {}, voiceOptions: VoiceOptions = {}) {
+  const debugLog = new DebugLog();
+  const sink = log;
+  log = (component, message, details = {}) => { debugLog.append(component, message, details); sink(component, message, details); };
   const access = hosted ? createHostedAccess(hosted) : undefined;
   const store = new TelemetryStore();
   const intelligence = new FlightIntelligence(log);
@@ -19,9 +23,16 @@ export function createTelemetryServer(log = (component: string, message: string,
   };
   const sessionApi = createSessionApi(req => !access || access.viewerAuthorized(req),
     hosted ? [hosted.publicOrigin] : ['http://127.0.0.1:5173', 'http://localhost:5173'],
-    { log: (message, details) => log('OPENAI', message, details), ...conversationOptions, flightSnapshot: snapshot },
-    { log: message => log('VOICE', message), ...voiceOptions });
+    { log: (message, details) => log(message === 'Reaction decision' ? 'PASSENGER' : message.startsWith('Session ') ? 'SESSION' : 'OPENAI', message, details), ...conversationOptions, flightSnapshot: snapshot },
+    { log: (message, details) => log('VOICE', message, details), ...voiceOptions });
   const http = createServer((req, res) => {
+    if (req.url === '/api/debug-log') {
+      const authorized = !access || access.viewerAuthorized(req);
+      res.writeHead(!authorized ? 401 : req.method !== 'GET' ? 405 : 200,
+        { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      res.end(JSON.stringify(!authorized ? { error: 'Sign in again.' } : req.method !== 'GET' ? { error: 'Method not allowed' } : debugLog.snapshot()));
+      return;
+    }
     if (req.url?.startsWith('/api/')) {
       void sessionApi(req, res).catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); });
       return;
@@ -42,7 +53,7 @@ export function createTelemetryServer(log = (component: string, message: string,
   const viewers = new WebSocketServer({ noServer: true, maxPayload: 1024 });
   let bridge: WebSocket | undefined;
   let lastHeartbeat = 0;
-  let lastSampleLog = 0;
+
   const publish = () => {
     const state = snapshot();
     sessionApi.observe(state);
@@ -70,7 +81,7 @@ export function createTelemetryServer(log = (component: string, message: string,
   bridges.on('connection', client => {
     bridge = client;
     lastHeartbeat = Date.now();
-    lastSampleLog = 0;
+
     store.connect();
     log('BRIDGE', 'Client connected');
     publish();
@@ -84,10 +95,6 @@ export function createTelemetryServer(log = (component: string, message: string,
         store.receive(message);
         if (wasConnected !== message.simulatorConnected)
           log('SIMCONNECT', message.simulatorConnected ? 'Connected to MSFS' : 'Disconnected from MSFS');
-        if (message.telemetry && Date.now() - lastSampleLog > 10000) {
-          lastSampleLog = Date.now();
-          log('SERVER', 'Telemetry received', { sampleTimestamp: message.telemetry.timestamp });
-        }
         publish();
       } catch {
         log('BRIDGE', 'Invalid protocol message; closing connection');

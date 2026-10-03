@@ -25,8 +25,8 @@ export class FlightIntelligence {
       const decision = this.gate.accept(event, snapshot.telemetry!.timestamp);
       this.state.events.push({ event, ...decision });
       this.state.events = this.state.events.slice(-20);
-      this.log('EVENT', event.type, { generation: event.generation, timestamp: event.timestamp, ...event.facts });
-      this.log('GATE', decision.reason, { event: event.type, forward: decision.forward });
+      this.log('EVENT', event.type, { eventId: `${event.generation}:${event.timestamp}:${event.type}`, generation: event.generation, timestamp: event.timestamp, ...event.facts });
+      this.log('GATE', decision.reason, { eventId: `${event.generation}:${event.timestamp}:${event.type}`, event: event.type, forward: decision.forward });
     }
     if (this.state.status !== status || this.state.generation !== (context?.generation ?? null))
       this.log('DETECTOR', status, { generation: context?.generation ?? null });

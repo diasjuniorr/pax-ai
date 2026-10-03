@@ -58,6 +58,11 @@
 <div class="event-history"><ol id="flight-events" aria-label="Detected flight events"></ol><p class="events-empty">No flight events in this segment.<br><span>Detections will appear here as you fly.</span></p></div>
 <p class="hint">Takeoff and landing events for the current aircraft generation. Pause, load and reconnect reset the evidence. Optional passenger comments can use accepted events. Threshold tuning still needs live validation.</p></section>
 </div>
+<section class="panel debug-panel" aria-labelledby="debug-heading"><div class="panel-heading"><div><p class="eyebrow">DEVELOPMENT / APPLICATION EVENTS</p><h2 id="debug-heading">Debug console</h2></div></div>
+<p class="hint">Latest 500 application events, oldest first. Source timestamps use UTC; server and laptop clocks can differ. Simulator pauses do not clear logs. Server restart clears server history; refreshing clears this tab's voice history. Keys, audio and conversation text are excluded.</p>
+<div class="debug-toolbar"><label>Component<select id="debug-component" aria-label="Component"><option value="">All components</option></select></label><label>Severity<select id="debug-level" aria-label="Severity"><option value="">All levels</option><option value="info">Info</option><option value="warn">Warning</option><option value="error">Error</option></select></label><label>Search logs<input id="debug-search" type="search" placeholder="Event ID, TAKEOFF, reason…"></label><label class="toggle-label"><input id="debug-follow" type="checkbox" checked> Auto-scroll</label></div>
+<p id="debug-status" class="hint" role="status">Loading application events…</p><ol id="debug-entries" aria-label="Application debug events" tabindex="0"></ol>
+<div class="voice-controls"><button id="debug-copy" class="secondary" type="button">Copy filtered logs</button><button id="debug-download" class="secondary" type="button">Download filtered JSON</button></div><p id="debug-feedback" class="hint" role="status"></p></section>
 <footer><span class="footer-brand">PAX <span>/ Passenger Awareness eXperience</span></span><span>Made for the journey.</span></footer>
 </main><script type="module" src="/src/main.ts"></script>
 </body></html>

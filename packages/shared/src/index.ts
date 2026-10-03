@@ -113,3 +113,27 @@ export const voiceTurnSchema = z.object({
   reactionId: z.string().optional(), reactionRemainingMs: finite.min(0).max(15000).optional(), validForMs: finite.min(0).max(3000),
 });
 export type VoiceTurn = z.infer<typeof voiceTurnSchema>;
+
+export const debugEntrySchema = z.object({
+  id: z.string(), timestamp: finite, source: z.enum(['server', 'browser']),
+  component: z.string().max(40), level: z.enum(['info', 'warn', 'error']),
+  message: z.string().max(300), details: z.record(z.union([z.string().max(300), finite, z.boolean(), z.null()])),
+});
+export type DebugEntry = z.infer<typeof debugEntrySchema>;
+export const debugLogSchema = z.object({ entries: z.array(debugEntrySchema).max(500) });
+
+// Explicit metadata allowlist. Never forward arbitrary errors, prompts, keys or transcripts.
+const debugFields = new Set(['sessionId', 'connectionId', 'requestId', 'responseId', 'eventId', 'generation',
+  'timestamp', 'event', 'type', 'status', 'reason', 'forward', 'durationMs', 'inputTokens', 'outputTokens',
+  'sampleTimestamp', 'altitudeAglFeet', 'indicatedAirspeedKnots', 'verticalSpeedFpm', 'phase', 'automatic',
+  'eventTimestamp', 'evaluatedAt', 'eventAgeMs', 'receiptAgeMs', 'gateForward', 'gateReason', 'detectorStatus',
+  'telemetryState', 'simulationActive', 'generationMatches', 'aircraftMatches']);
+export function debugDetails(input: Record<string, unknown> = {}): DebugEntry['details'] {
+  const output: DebugEntry['details'] = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (!debugFields.has(key)) continue;
+    if (typeof value === 'string') output[key] = value.slice(0, 300);
+    else if (typeof value === 'boolean' || value === null || (typeof value === 'number' && Number.isFinite(value))) output[key] = value;
+  }
+  return output;
+}

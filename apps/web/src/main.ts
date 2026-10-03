@@ -1,5 +1,6 @@
 import { serverSnapshotSchema, type AircraftTelemetry } from '@pax/shared';
 import './style.css';
+import { debugEvent } from './debug-console';
 import './session';
 import './conversation';
 import './voice';
@@ -25,7 +26,7 @@ let socket: WebSocket;
 let reconnectDelay = 1000;
 function connect() {
   socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/telemetry`);
-  socket.onopen = () => { lastMessage = Date.now(); element('server').textContent = 'Server: CONNECTED'; element('server').dataset.state = 'online'; };
+  socket.onopen = () => { debugEvent('WEB', 'Telemetry socket connected'); lastMessage = Date.now(); element('server').textContent = 'Server: CONNECTED'; element('server').dataset.state = 'online'; };
   socket.onmessage = event => {
     let value: unknown;
     try { value = JSON.parse(event.data); } catch { return; }
@@ -49,6 +50,7 @@ function connect() {
     }
   };
   socket.onclose = event => {
+    debugEvent('WEB', 'Telemetry socket disconnected', {}, 'warn');
     if (event.code === 1008) { location.reload(); return; }
     for (const id of ['server', 'bridge', 'sim']) element(id).dataset.state = 'offline';
     element('server').textContent = 'Server: DISCONNECTED · reconnecting';

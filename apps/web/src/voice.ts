@@ -1,4 +1,5 @@
 import { voiceAvailabilitySchema, voiceTurnSchema, type ServerSnapshot } from '@pax/shared';
+import { debugEvent } from './debug-console';
 import { VoiceLifecycle } from './voice/lifecycle';
 const button = (id: string) => document.getElementById(id) as HTMLButtonElement;
 const connect = button('voice-connect'), disconnect = button('voice-disconnect'), talk = button('voice-talk');
@@ -13,6 +14,7 @@ let heartbeat: ReturnType<typeof setInterval> | undefined;
 let reactionPoll: ReturnType<typeof setInterval> | undefined;
 let flight: ServerSnapshot | null = null, flightReceivedAt = 0, reactionsEnabled = false;
 let automaticGeneration: string | null = null;
+let activeReactionId: string | undefined;
 let lastPilotAction = 0;
 function liveFlight() {
   return flight?.flight?.status === 'tracking' && flight.telemetryState === 'live'
@@ -20,6 +22,7 @@ function liveFlight() {
 }
 const lifecycle = new VoiceLifecycle({
   prepareResponse: async () => {
+    activeReactionId = undefined;
     const local = resources;
     if (!local) throw new Error('Voice disconnected');
     const started = performance.now();
@@ -32,10 +35,13 @@ const lifecycle = new VoiceLifecycle({
     try {
       if (resources?.channel.readyState !== 'open') throw new Error('Closed');
       resources.channel.send(JSON.stringify(event));
+      if (['response.create', 'response.cancel', 'output_audio_buffer.clear'].includes(event.type))
+        debugEvent('VOICE', event.type === 'response.create' ? 'Response requested' : event.type === 'response.cancel' ? 'Response cancellation requested' : 'Audio clear requested',
+          { sessionId, connectionId: resources.owner.connectionId, automatic: lifecycle.automatic, eventId: activeReactionId });
     } catch { stop('Voice connection closed. Please reconnect.'); }
   },
   microphone: enabled => { resources?.stream?.getAudioTracks().forEach(track => { track.enabled = enabled; }); },
-  changed: () => render(), failed: message => stop(message),
+  changed: phase => { debugEvent('VOICE', 'Phase changed', { phase, sessionId, connectionId: resources?.owner.connectionId }); render(); }, failed: message => stop(message),
   transcript: text => { transcript.textContent = text; },
   usage: value => {
     const data = value as { input_tokens?: unknown; output_tokens?: unknown } | undefined;
@@ -71,6 +77,7 @@ async function refresh() {
   finally { polling = false; render(); }
 }
 function stop(message = '') {
+  if (message) debugEvent('VOICE', 'Voice stopped with an error', { sessionId, connectionId: resources?.owner.connectionId }, 'error');
   generation++;
   clearInterval(heartbeat); heartbeat = undefined;
   clearInterval(reactionPoll); reactionPoll = undefined; automaticGeneration = null;
@@ -101,7 +108,14 @@ connect.addEventListener('click', () => {
       channel.onopen = () => { if (current === generation) lifecycle.ready(); };
       channel.onmessage = event => {
         if (current !== generation || typeof event.data !== 'string' || event.data.length > 100000) return;
-        try { lifecycle.receive(JSON.parse(event.data)); } catch { stop('Invalid voice event. Please reconnect.'); }
+        try {
+          const value = JSON.parse(event.data);
+          const labels: Record<string, string> = { 'response.created': 'Response created', 'response.done': 'Response generation finished',
+            'output_audio_buffer.started': 'Audio playback started', 'output_audio_buffer.stopped': 'Audio playback finished', 'output_audio_buffer.cleared': 'Audio buffer cleared' };
+          if (labels[value.type]) debugEvent('VOICE', labels[value.type]!, { sessionId, connectionId: owner.connectionId,
+            responseId: value.response?.id ?? value.response_id, status: value.response?.status, eventId: activeReactionId });
+          lifecycle.receive(value);
+        } catch { stop('Invalid voice event. Please reconnect.'); }
       };
       channel.onclose = () => { if (current === generation) stop('Voice disconnected. Connect again when ready.'); };
       channel.onerror = () => { if (current === generation) stop('Voice connection failed. Please reconnect.'); };
@@ -141,7 +155,7 @@ connect.addEventListener('click', () => {
           const turn = voiceTurnSchema.parse(value.turn);
           if (current !== generation || !reactionsEnabled || document.hidden || !liveFlight() || pilotAction !== lastPilotAction
             || performance.now() - started >= turn.validForMs || turn.generation !== flight?.simulation?.generation) return;
-          automaticGeneration = turn.generation;
+          automaticGeneration = turn.generation; activeReactionId = turn.reactionId;
           lifecycle.react(turn.instructions, Math.max(1, (turn.reactionRemainingMs ?? 15000) - (performance.now() - started))); // Rechecks idle after the HTTP round trip.
         }).catch(() => { if (current === generation && lifecycle.automatic) lifecycle.interrupt(false); })
           .finally(() => { reactionPending = false; });

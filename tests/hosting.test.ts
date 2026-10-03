@@ -221,3 +221,21 @@ test('real bridge events reach protected reaction controls and owner-only voice 
   assert.equal((await post('/api/voice/turn', owner)).status, 409);
   assert.deepEqual(await (await fetch(`${url}/api/reactions`, { headers })).json(), { sessionId: null, enabled: false, decisions: [], history: [] });
 });
+
+test('debug timeline requires dashboard authentication and survives passenger session end', async t => {
+  const { url, login } = await setup(t);
+  assert.equal((await fetch(`${url}/api/debug-log`)).status, 401);
+  assert.equal((await fetch(`${url}/api/debug-log`, { headers: { Authorization: `Bearer ${bridgeToken}` } })).status, 401);
+  const cookie = (await login(dashboardToken)).headers.get('set-cookie')!.split(';')[0]!;
+  const headers = { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' };
+  const post = (path: string, data: unknown) => fetch(`${url}${path}`, { method: 'POST', headers, body: JSON.stringify(data) });
+  assert.equal((await post('/api/debug-log', { message: 'Injected' })).status, 405);
+  const { passenger } = await (await post('/api/passenger/random', {})).json() as { passenger: unknown };
+  const { session } = await (await post('/api/session', { passenger, expectedDurationMinutes: 30 })).json() as { session: { id: string } };
+  await post('/api/session/end', { id: session.id });
+  const response = await fetch(`${url}/api/debug-log`, { headers });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const body = await response.json() as { entries: { message: string; details: { sessionId: string } }[] };
+  assert.deepEqual(body.entries.map(e => e.message), ['Session started', 'Session ended']);
+  assert.ok(body.entries.every(e => e.details.sessionId === session.id));
+});

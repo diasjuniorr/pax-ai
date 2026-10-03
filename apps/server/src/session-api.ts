@@ -11,7 +11,7 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
   const store = new FlightSessionStore();
   const conversation = new ConversationStore(options);
   const voice = new VoiceStore(voiceOptions);
-  const reactions = new ReactionCoordinator(Date.now, decision => options.log?.('Reaction decision', { ...decision }));
+  const reactions = new ReactionCoordinator(Date.now, decision => options.log?.('Reaction decision', { eventId: decision.id, event: decision.event, status: decision.status, reason: decision.reason, ...decision.diagnostics }));
   const observe = (snapshot?: ServerSnapshot) => { if (snapshot) reactions.observe(store.snapshot().session, snapshot); };
   const currentFlight = () => { const snapshot = options.flightSnapshot?.(); observe(snapshot); return snapshot; };
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
@@ -80,12 +80,14 @@ export function createSessionApi(authorize: (req: IncomingMessage) => boolean, a
       if (req.url === '/api/session/end') {
         const { id } = z.object({ id: z.string().uuid() }).strict().parse(data);
         if (!store.end(id)) { send(409, { error: 'That session is no longer active. Refresh the session state.' }); return; }
+        options.log?.('Session ended', { sessionId: id });
         conversation.reset(null); reactions.reset(null);
         await voice.stop();
         send(200, store.snapshot()); return;
       }
       const session = store.start(data);
       if (!session) { send(409, { error: 'A session is already active. End it before starting another.' }); return; }
+      options.log?.('Session started', { sessionId: session.id });
       conversation.reset(session.id); reactions.reset(session.id); currentFlight();
       send(201, { session });
     } catch (error) {

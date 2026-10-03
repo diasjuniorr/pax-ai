@@ -44,6 +44,14 @@ Last reviewed: 2026-09-22 against source, package boundaries, tests, [README](..
 - Verification: production build/typecheck, 52 backend tests, 5 browser tests (including JSON download), and hosted smoke passed locally.
 - Timing policy is unchanged while gathering evidence: even a small future event timestamp is currently rejected. Automatic clock sync alone does not establish or rule out that cause.
 
+## Unified application debug console — 2026-10-03
+
+- Added a bottom-of-page timeline for server events and this tab's voice lifecycle. Component/severity/search filters, per-row copy, filtered copy/JSON export and auto-scroll control.
+- Server history is bounded to 500 entries, authenticated/read-only, and survives simulator pauses and passenger session end. The merged UI is also bounded to 500. Server restart clears server history; page refresh clears browser voice history. No durable storage or external logging service.
+- Metadata is allowlisted; secrets, audio, transcript/profile/prompt text and arbitrary error bodies are excluded. Flight events/gate/passenger decisions share an event ID; voice records connection and response IDs. Removed repetitive sample logging from the timeline.
+- Local validation: 54 backend tests, 6 browser tests, production build/typecheck and hosted smoke passed.
+- See [console usage and limits](debug-console.md). Reaction eligibility behavior is unchanged; the original suppression cause still needs a captured live log.
+
 ## Status legend
 
 - [x] Completed and verified within the explicitly stated scope, with evidence.
