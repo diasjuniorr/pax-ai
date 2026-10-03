@@ -35,3 +35,10 @@ Automated tests use synthetic telemetry and provider/WebRTC fixtures. They cover
 Local verification: 50 backend/logic/integration tests, 5 browser regressions, production build and compiled-host smoke passed. Full Windows CI passed for `d171941` in [run 36570941330](https://github.com/diasjuniorr/pax-ai/actions/runs/36570941330). Render deployment has not been independently verified.
 
 Implementation references: [OpenAI manual Realtime conversations and WebRTC interruption](https://developers.openai.com/api/docs/guides/realtime-conversations), [per-response instructions and client events](https://developers.openai.com/api/reference/resources/realtime/client-events).
+
+
+## Downloading reaction diagnostics
+
+After a suppressed event, click **Download diagnostic log** in Voice preview before ending the passenger session. Pausing MSFS does not clear this reaction history. Share the JSON to inspect the exact gate result and timing. `eventAgeMs` is server evaluation time minus the laptop event timestamp: negative means the event timestamp is ahead of the server, but is not a measurement of pure clock offset. `receiptAgeMs` is backend time since the latest sample receipt at detection. `evaluatedAt` updates for each decision transition; the original event timestamp stays fixed.
+
+The download includes up to 100 decision transitions plus the current 20 decisions, using the last successful dashboard fetch. It excludes credentials, passenger profile, conversations and audio. It includes session/generation identifiers and flight-event timing. This is bounded in-memory diagnosis, not a durable log archive; export before session end or deployment. The standard Render server logs also include these structured diagnostics.

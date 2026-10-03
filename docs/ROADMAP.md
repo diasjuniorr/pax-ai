@@ -36,6 +36,14 @@ Last reviewed: 2026-09-22 against source, package boundaries, tests, [README](..
 - [x] Production build/typecheck and all 5 existing browser regressions passed. Manual browser screenshots reviewed at 1440, 768, 390 and 320 pixels; no horizontal overflow or page errors. Preview images are local under `dist/ui-preview/`.
 - [ ] Verify the deployed appearance after Render updates. This UI change does not alter the Windows runtime package or complete live MSFS/voice acceptance.
 
+## Reaction diagnostics — 2026-10-03
+
+- User confirmed live AI text replies. A takeoff produced a suppressed passenger decision; the later paused screenshot showed cleared detector history. Takeoff reached reaction policy, but the exact original suppression cause is not yet known.
+- Added separate gate-rejected, event-too-old, future-timestamp and invalid-context explanations with signed server-minus-event age, source/evaluation timestamps, backend receipt age, detector state and identity-match flags.
+- Retain the latest 100 decision transitions in memory through simulator pauses; expose them through the existing authenticated reaction API and a dashboard JSON download. Session end/server restart clears history. Existing structured server logs carry the same fields. No new Windows package or paid logging service required.
+- Verification: production build/typecheck, 52 backend tests, 5 browser tests (including JSON download), and hosted smoke passed locally.
+- Timing policy is unchanged while gathering evidence: even a small future event timestamp is currently rejected. Automatic clock sync alone does not establish or rule out that cause.
+
 ## Status legend
 
 - [x] Completed and verified within the explicitly stated scope, with evidence.

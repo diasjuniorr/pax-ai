@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 // Let in-flight dashboard polls finish before Playwright disposes their HTTP responses.
 test.afterEach(async ({ context }) => { await context.unrouteAll({ behavior: 'wait' }); });
@@ -126,6 +127,14 @@ test('voice preview holds/mutes microphone, waits for playback, and releases res
   await page.getByRole('button', { name: 'Disconnect voice', exact: true }).click();
   await page.evaluate(() => { (window as unknown as { voiceFixture: { resolveMicrophone: () => void } }).voiceFixture.resolveMicrophone(); });
   await expect.poll(async () => (await read()).stopped).toBe(true);
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download diagnostic log' }).click();
+  const artifact = await downloaded;
+  expect(artifact.suggestedFilename()).toBe('pax-reaction-diagnostics.json');
+  const log = JSON.parse(await readFile((await artifact.path())!, 'utf8'));
+  expect(log.format).toBe('pax-reaction-diagnostics-v1');
+  expect(log.sessionId).toBe((await start.json()).session.id);
+  expect(log.history).toEqual([]);
   await page.getByRole('button', { name: 'End session', exact: true }).click();
   await expect(page.locator('#voice-status')).toContainText('Start a flight session');
 });

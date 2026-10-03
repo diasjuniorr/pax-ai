@@ -15,6 +15,7 @@ export class ReactionCoordinator {
   private sessionId: string | null = null;
   private enabled = false;
   private decisions: ReactionDecision[] = [];
+  private history: ReactionDecision[] = [];
   private seen = new Set<string>();
   private pending?: { event: FlightEvent; expires: number; decision: ReactionDecision; perception: ReturnType<typeof perceive> };
   private lastDispatch = -Infinity;
@@ -22,17 +23,24 @@ export class ReactionCoordinator {
   private initialized = false;
   constructor(private readonly now = Date.now, private readonly log: (decision: ReactionDecision) => void = () => {}) {}
   reset(sessionId: string | null) {
-    this.sessionId = sessionId; this.enabled = false; this.decisions = []; this.seen.clear();
+    this.sessionId = sessionId; this.enabled = false; this.decisions = []; this.history = []; this.seen.clear();
     this.pending = undefined; this.lastDispatch = -Infinity; this.identity = ''; this.initialized = false;
   }
-  snapshot() { return { sessionId: this.sessionId, enabled: this.enabled, decisions: this.decisions.map(d => ({ ...d })) }; }
+  private copy(d: ReactionDecision): ReactionDecision { return { ...d, ...(d.diagnostics ? { diagnostics: { ...d.diagnostics } } : {}) }; }
+  snapshot() { return { sessionId: this.sessionId, enabled: this.enabled, decisions: this.decisions.map(d => this.copy(d)), history: this.history.map(d => this.copy(d)) }; }
   configure(enabled: boolean) {
     if (enabled !== this.enabled) this.discard('Automatic reactions setting changed');
     this.enabled = enabled;
   }
   private update(decision: ReactionDecision, status: ReactionDecision['status'], reason: string) {
     if (decision.status === status && decision.reason === reason) return;
-    decision.status = status; decision.reason = reason; this.log({ ...decision });
+    decision.status = status; decision.reason = reason;
+    if (decision.diagnostics) {
+      decision.diagnostics.evaluatedAt = this.now();
+      decision.diagnostics.eventAgeMs = this.now() - decision.diagnostics.eventTimestamp;
+    }
+    this.history.push(this.copy(decision)); this.history = this.history.slice(-100);
+    this.log(this.copy(decision));
   }
   discard(reason: string) {
     if (this.pending) this.update(this.pending.decision, 'discarded', reason);
@@ -57,12 +65,25 @@ export class ReactionCoordinator {
       this.seen.add(id);
       if (this.seen.size > 100) this.seen.delete(this.seen.values().next().value!);
       const perception = perceive(event, session);
-      const decision: ReactionDecision = { id, timestamp: now, event: event.type, observation: perception.observation, status: 'suppressed', reason: '' };
+      const decision: ReactionDecision = { id, timestamp: now, event: event.type, observation: perception.observation, status: 'suppressed', reason: '', diagnostics: {
+        eventTimestamp: event.timestamp, evaluatedAt: now, eventAgeMs: now - event.timestamp,
+        receiptAgeMs: snapshot.lastReceivedAt === null ? null : now - snapshot.lastReceivedAt,
+        gateForward: item.forward, gateReason: item.reason, detectorStatus: snapshot.flight?.status ?? 'unavailable',
+        telemetryState: snapshot.telemetryState, simulationActive: snapshot.simulation?.active === true,
+        generationMatches: event.generation === snapshot.simulation?.generation,
+        aircraftMatches: event.aircraftId === snapshot.simulation?.aircraftId,
+      } };
       this.decisions.push(decision); this.decisions = this.decisions.slice(-20);
-      if (!flight.available || event.generation !== snapshot.simulation?.generation || event.aircraftId !== snapshot.simulation?.aircraftId)
-        this.update(decision, 'suppressed', 'No valid matching flight context');
-      else if (!item.forward || now - event.timestamp > 15000 || now < event.timestamp)
-        this.update(decision, 'suppressed', 'Rejected by event gate or event too old / clock mismatch');
+      if (!flight.available)
+        this.update(decision, 'suppressed', `Flight context unavailable (detector: ${snapshot.flight?.status ?? 'unavailable'}, telemetry: ${snapshot.telemetryState})`);
+      else if (!decision.diagnostics!.generationMatches || !decision.diagnostics!.aircraftMatches)
+        this.update(decision, 'suppressed', 'Event aircraft or generation does not match current flight');
+      else if (!item.forward)
+        this.update(decision, 'suppressed', `Event gate rejected: ${item.reason}`);
+      else if (now - event.timestamp > 15000)
+        this.update(decision, 'suppressed', `Event too old: ${now - event.timestamp} ms (limit: 15000 ms)`);
+      else if (now < event.timestamp)
+        this.update(decision, 'suppressed', `Event timestamp is ${event.timestamp - now} ms ahead of server time`);
       else if (now - this.lastDispatch < 30000)
         this.update(decision, 'suppressed', '30-second passenger reaction cooldown');
       else if (!this.enabled) this.update(decision, 'preview', `Silent preview · ${session.passenger.flightDisposition} passenger`);

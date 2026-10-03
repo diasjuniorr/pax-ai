@@ -219,5 +219,5 @@ test('real bridge events reach protected reaction controls and owner-only voice 
   assert.equal(disconnected.turn.generation, null); assert.match(disconnected.turn.instructions, /"available":false/);
   await post('/api/session/end', { id: session.id });
   assert.equal((await post('/api/voice/turn', owner)).status, 409);
-  assert.deepEqual(await (await fetch(`${url}/api/reactions`, { headers })).json(), { sessionId: null, enabled: false, decisions: [] });
+  assert.deepEqual(await (await fetch(`${url}/api/reactions`, { headers })).json(), { sessionId: null, enabled: false, decisions: [], history: [] });
 });

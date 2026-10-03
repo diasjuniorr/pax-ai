@@ -156,3 +156,33 @@ test('a cancelled input must drain before an automatic turn can start', t => {
   f.state.receive({ type: 'input_audio_buffer.cleared' });
   assert.equal(f.state.react('Event'), true);
 });
+
+test('diagnostics distinguish gate rejection, old events and even small future timestamps', () => {
+  for (const [offset, forward, pattern] of [[-16000, true, /Event too old: 16000 ms/], [250, true, /250 ms ahead/], [0, false, /Event gate rejected: cooldown/]] as const) {
+    const f = fixture();
+    f.snapshot.flight!.events.push({ forward, reason: forward ? 'accepted' : 'cooldown', event: {
+      type: 'TAKEOFF', priority: 'HIGH', source: 'telemetry', timestamp: f.now() + offset,
+      generation: f.snapshot.simulation!.generation, aircraftId: 'Cessna',
+      facts: { altitudeAglFeet: 200, indicatedAirspeedKnots: 80, verticalSpeedFpm: 650 },
+    } });
+    f.policy.observe(f.session, f.snapshot);
+    const decision = f.policy.snapshot().decisions[0]!;
+    assert.match(decision.reason, pattern);
+    assert.equal(decision.diagnostics!.eventAgeMs, offset === 0 ? 0 : -offset);
+    assert.equal(decision.diagnostics!.gateForward, forward);
+    assert.equal(decision.diagnostics!.receiptAgeMs, 0);
+  }
+});
+
+test('diagnostic history retains transitions through pause, is isolated, bounded and reset per session', () => {
+  const f = fixture(); f.policy.configure(true); f.event(); f.policy.claim(false);
+  f.snapshot.simulation!.active = false; f.policy.observe(f.session, f.snapshot);
+  const state = f.policy.snapshot();
+  assert.deepEqual(state.history.map(d => d.status), ['queued', 'deferred', 'discarded']);
+  state.history[0]!.diagnostics!.eventAgeMs = 999999;
+  assert.notEqual(f.policy.snapshot().history[0]!.diagnostics!.eventAgeMs, 999999);
+  f.snapshot.simulation!.active = true; f.policy.configure(false);
+  for (let i = 0; i < 110; i++) { f.advance(1000); f.event(); }
+  assert.equal(f.policy.snapshot().history.length, 100);
+  f.policy.reset(null); assert.equal(f.policy.snapshot().history.length, 0);
+});

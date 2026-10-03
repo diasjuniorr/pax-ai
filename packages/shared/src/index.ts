@@ -95,11 +95,18 @@ export const reactionDecisionSchema = z.object({
   id: z.string(), timestamp: finite, event: z.enum(['TAKEOFF', 'LANDING']),
   observation: z.string(), reason: z.string(),
   status: z.enum(['preview', 'queued', 'deferred', 'dispatched', 'suppressed', 'discarded']),
+  diagnostics: z.object({
+    eventTimestamp: finite, evaluatedAt: finite, eventAgeMs: finite,
+    receiptAgeMs: finite.nullable(), gateForward: z.boolean(), gateReason: z.string(),
+    detectorStatus: z.string(), telemetryState: z.string(), simulationActive: z.boolean(),
+    generationMatches: z.boolean(), aircraftMatches: z.boolean(),
+  }).optional(),
 });
 export type ReactionDecision = z.infer<typeof reactionDecisionSchema>;
 export const reactionStateSchema = z.object({
   sessionId: z.string().uuid().nullable(), enabled: z.boolean(),
   decisions: z.array(reactionDecisionSchema).max(20),
+  history: z.array(reactionDecisionSchema).max(100).optional(),
 });
 export const voiceTurnSchema = z.object({
   instructions: z.string().min(1).max(16000), generation: z.string().nullable(),
