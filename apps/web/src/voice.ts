@@ -38,10 +38,10 @@ const lifecycle = new VoiceLifecycle({
       if (['response.create', 'response.cancel', 'output_audio_buffer.clear'].includes(event.type))
         debugEvent('VOICE', event.type === 'response.create' ? 'Response requested' : event.type === 'response.cancel' ? 'Response cancellation requested' : 'Audio clear requested',
           { sessionId, connectionId: resources.owner.connectionId, automatic: lifecycle.automatic, eventId: activeReactionId });
-    } catch { stop('Voice connection closed. Please reconnect.'); }
+    } catch { stop('Voice connection closed. Please reconnect.', 'data-channel-send-failed'); }
   },
   microphone: enabled => { resources?.stream?.getAudioTracks().forEach(track => { track.enabled = enabled; }); },
-  changed: phase => { debugEvent('VOICE', 'Phase changed', { phase, sessionId, connectionId: resources?.owner.connectionId }); render(); }, failed: message => stop(message),
+  changed: phase => { debugEvent('VOICE', 'Phase changed', { phase, sessionId, connectionId: resources?.owner.connectionId }); render(); }, failed: message => stop(message, 'voice-lifecycle-failed'),
   transcript: text => { transcript.textContent = text; },
   usage: value => {
     const data = value as { input_tokens?: unknown; output_tokens?: unknown } | undefined;
@@ -64,7 +64,7 @@ function render() {
 async function request(path: string, data?: unknown) {
   const response = await fetch(`/api/voice${path}`, { ...(data === undefined ? { cache: 'no-store' as const }
     : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }), signal: AbortSignal.timeout(path === '/start' ? 35000 : 5000) });
-  if (response.status === 401) { stop('Please sign in again.'); throw new Error('Please sign in again.'); }
+  if (response.status === 401) { stop('Please sign in again.', 'authentication-expired'); throw new Error('Please sign in again.'); }
   const result = await response.json();
   if (!response.ok) throw new Error(result.error ?? 'Voice request failed.');
   return result;
@@ -76,8 +76,9 @@ async function refresh() {
   catch { online = false; }
   finally { polling = false; render(); }
 }
-function stop(message = '') {
-  if (message) debugEvent('VOICE', 'Voice stopped with an error', { sessionId, connectionId: resources?.owner.connectionId }, 'error');
+function stop(message = '', reason = 'voice-error') {
+  if (resources || message) debugEvent('VOICE', 'Voice stopped', { reason, sessionId, connectionId: resources?.owner.connectionId },
+    ['user-disconnect', 'page-hidden', 'page-closed', 'session-changed'].includes(reason) ? 'info' : 'error');
   generation++;
   clearInterval(heartbeat); heartbeat = undefined;
   clearInterval(reactionPoll); reactionPoll = undefined; automaticGeneration = null;
@@ -115,23 +116,23 @@ connect.addEventListener('click', () => {
           if (labels[value.type]) debugEvent('VOICE', labels[value.type]!, { sessionId, connectionId: owner.connectionId,
             responseId: value.response?.id ?? value.response_id, status: value.response?.status, eventId: activeReactionId });
           lifecycle.receive(value);
-        } catch { stop('Invalid voice event. Please reconnect.'); }
+        } catch { stop('Invalid voice event. Please reconnect.', 'invalid-provider-event'); }
       };
-      channel.onclose = () => { if (current === generation) stop('Voice disconnected. Connect again when ready.'); };
-      channel.onerror = () => { if (current === generation) stop('Voice connection failed. Please reconnect.'); };
+      channel.onclose = () => { if (current === generation) stop('Voice disconnected. Connect again when ready.', 'data-channel-closed'); };
+      channel.onerror = () => { if (current === generation) stop('Voice connection failed. Please reconnect.', 'data-channel-error'); };
       pc.onconnectionstatechange = () => {
-        if (current === generation && ['failed', 'disconnected', 'closed'].includes(pc.connectionState)) stop('Voice connection lost. Please reconnect.');
+        if (current === generation && ['failed', 'disconnected', 'closed'].includes(pc.connectionState)) stop('Voice connection lost. Please reconnect.', 'peer-disconnected');
       };
       pc.ontrack = event => {
         if (current !== generation) return;
         audio.srcObject = event.streams[0] ?? new MediaStream([event.track]);
-        void audio.play().catch(() => { if (current === generation) stop('Audio playback was blocked. Check browser sound permissions and reconnect.'); });
+        void audio.play().catch(() => { if (current === generation) stop('Audio playback was blocked. Check browser sound permissions and reconnect.', 'playback-blocked'); });
       };
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
       if (current !== generation) { stream.getTracks().forEach(track => track.stop()); return; }
       local.stream = stream;
       for (const track of stream.getAudioTracks()) {
-        track.enabled = false; track.onended = () => { if (current === generation) stop('Microphone disconnected. Please reconnect.'); };
+        track.enabled = false; track.onended = () => { if (current === generation) stop('Microphone disconnected. Please reconnect.', 'microphone-ended'); };
         pc.addTrack(track, stream);
       }
       const offer = await pc.createOffer();
@@ -164,14 +165,14 @@ connect.addEventListener('click', () => {
       heartbeat = setInterval(() => {
         if (pending) return;
         pending = true;
-        void request('/heartbeat', owner).catch(() => { if (current === generation) stop('The session or server connection ended. Please reconnect.'); }).finally(() => { pending = false; });
+        void request('/heartbeat', owner).catch(() => { if (current === generation) stop('The session or server connection ended. Please reconnect.', 'heartbeat-failed'); }).finally(() => { pending = false; });
       }, 5000);
     } catch (failure) {
-      if (current === generation) stop(failure instanceof Error ? failure.message : 'Could not connect voice.');
+      if (current === generation) stop(failure instanceof Error ? failure.message : 'Could not connect voice.', 'connection-setup-failed');
     }
   })();
 });
-disconnect.addEventListener('click', () => stop());
+disconnect.addEventListener('click', () => stop('', 'user-disconnect'));
 talk.addEventListener('pointerdown', event => {
   if (event.button !== 0 || talk.disabled) return;
   event.preventDefault(); lastPilotAction = performance.now(); talk.setPointerCapture(event.pointerId); lifecycle.down();
@@ -187,11 +188,11 @@ talk.addEventListener('keyup', event => {
 });
 talk.addEventListener('blur', () => lifecycle.cancel());
 window.addEventListener('blur', () => lifecycle.cancel());
-window.addEventListener('pagehide', () => stop());
-document.addEventListener('visibilitychange', () => { if (document.hidden && resources) stop('Voice disconnected when the page was hidden.'); });
+window.addEventListener('pagehide', () => stop('', 'page-closed'));
+document.addEventListener('visibilitychange', () => { if (document.hidden && resources) stop('Voice disconnected when the page was hidden.', 'page-hidden'); });
 document.addEventListener('pax-session', event => {
   const next = (event as CustomEvent<string | null>).detail;
-  if (next !== sessionId) { stop(); transcript.textContent = ''; usage.textContent = ''; sessionId = next; render(); }
+  if (next !== sessionId) { stop('', 'session-changed'); transcript.textContent = ''; usage.textContent = ''; sessionId = next; render(); }
 });
 document.addEventListener('pax-flight', event => {
   flight = (event as CustomEvent<ServerSnapshot | null>).detail; flightReceivedAt = performance.now();

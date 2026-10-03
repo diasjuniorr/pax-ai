@@ -21,7 +21,7 @@ function fixture() {
     flight: { status: 'tracking', phase: 'airborne', aircraftId: 'Cessna', generation, events: [] } };
   const policy = new ReactionCoordinator(() => now); policy.reset(session.id); policy.observe(session, snapshot);
   function event(type: FlightEvent['type'] = 'TAKEOFF') {
-    snapshot.flight!.events.push({ forward: true, reason: 'accepted', event: { type, priority: 'HIGH', source: 'telemetry', timestamp: now,
+    snapshot.flight!.events.push({ detectedAt: now, forward: true, reason: 'accepted', event: { type, priority: 'HIGH', source: 'telemetry', timestamp: now,
       aircraftId: 'Cessna', generation: snapshot.simulation!.generation, facts: { altitudeAglFeet: 200, indicatedAirspeedKnots: 80, verticalSpeedFpm: 650 } } });
     policy.observe(session, snapshot);
   }
@@ -92,7 +92,7 @@ test('new event replaces pending event; rejected and old events cannot cause spe
   assert.equal(f.policy.snapshot().decisions[0]!.status, 'discarded');
   assert.match(f.policy.claim(true)!.perception.observation, /landed/);
   const old = fixture(); old.policy.configure(true);
-  old.snapshot.flight!.events.push({ event: { ...f.snapshot.flight!.events[0]!.event, timestamp: old.now() - 16000,
+  old.snapshot.flight!.events.push({ detectedAt: old.now() - 16000, event: { ...f.snapshot.flight!.events[0]!.event, timestamp: old.now() - 16000,
     generation: old.snapshot.simulation!.generation }, forward: true, reason: 'accepted' });
   old.policy.observe(old.session, old.snapshot); assert.equal(old.policy.claim(true), null);
 });
@@ -157,20 +157,37 @@ test('a cancelled input must drain before an automatic turn can start', t => {
   assert.equal(f.state.react('Event'), true);
 });
 
-test('diagnostics distinguish gate rejection, old events and even small future timestamps', () => {
-  for (const [offset, forward, pattern] of [[-16000, true, /Event too old: 16000 ms/], [250, true, /250 ms ahead/], [0, false, /Event gate rejected: cooldown/]] as const) {
-    const f = fixture();
-    f.snapshot.flight!.events.push({ forward, reason: forward ? 'accepted' : 'cooldown', event: {
+test('source clock offsets do not reject fresh detections or change the backend expiry', () => {
+  for (const offset of [1898, 2051, 60000, -60000]) {
+    const f = fixture(); f.policy.configure(true);
+    f.snapshot.flight!.events.push({ detectedAt: f.now(), forward: true, reason: 'accepted', event: {
       type: 'TAKEOFF', priority: 'HIGH', source: 'telemetry', timestamp: f.now() + offset,
       generation: f.snapshot.simulation!.generation, aircraftId: 'Cessna',
       facts: { altitudeAglFeet: 200, indicatedAirspeedKnots: 80, verticalSpeedFpm: 650 },
     } });
     f.policy.observe(f.session, f.snapshot);
     const decision = f.policy.snapshot().decisions[0]!;
-    assert.match(decision.reason, pattern);
-    assert.equal(decision.diagnostics!.eventAgeMs, offset === 0 ? 0 : -offset);
-    assert.equal(decision.diagnostics!.gateForward, forward);
-    assert.equal(decision.diagnostics!.receiptAgeMs, 0);
+    assert.equal(decision.status, 'queued'); assert.equal(decision.diagnostics!.eventAgeMs, -offset);
+    assert.equal(decision.diagnostics!.detectionAgeMs, 0);
+    f.advance(14999); f.policy.observe(f.session, f.snapshot);
+    assert.equal(f.policy.snapshot().decisions[0]!.status, 'queued');
+    f.advance(1); f.policy.observe(f.session, f.snapshot); assert.equal(f.policy.claim(true), null);
+  }
+});
+
+test('missing backend timestamps and gate rejections fail closed; preview accepts clock skew', () => {
+  for (const mode of ['missing', 'gate', 'preview']) {
+    const f = fixture();
+    f.snapshot.flight!.events.push({ ...(mode !== 'missing' ? { detectedAt: f.now() } : {}), forward: mode !== 'gate', reason: mode === 'gate' ? 'cooldown' : 'accepted', event: {
+      type: 'TAKEOFF', priority: 'HIGH', source: 'telemetry', timestamp: f.now() + 1898,
+      generation: f.snapshot.simulation!.generation, aircraftId: 'Cessna',
+      facts: { altitudeAglFeet: 200, indicatedAirspeedKnots: 80, verticalSpeedFpm: 650 },
+    } });
+    f.policy.observe(f.session, f.snapshot);
+    const decision = f.policy.snapshot().decisions[0]!;
+    assert.equal(decision.status, mode === 'preview' ? 'preview' : 'suppressed');
+    if (mode === 'gate') assert.match(decision.reason, /Event gate rejected: cooldown/);
+    if (mode === 'missing') assert.match(decision.reason, /backend detection time/);
   }
 });
 

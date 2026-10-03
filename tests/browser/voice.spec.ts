@@ -118,6 +118,7 @@ test('voice preview holds/mutes microphone, waits for playback, and releases res
   await page.getByLabel('Allow automatic takeoff and landing comments').uncheck();
   await expect(page.locator('#reaction-status')).toContainText('Silent preview');
   await page.getByRole('button', { name: 'Disconnect voice', exact: true }).click();
+  await expect(page.locator('#debug-entries')).toContainText('user-disconnect');
   expect((await read()).stopped).toBe(true); expect((await read()).closed).toBe(true);
   await expect.poll(() => stopped).toBe(1);
   // A microphone permission result arriving after Cancel must release the new track too.

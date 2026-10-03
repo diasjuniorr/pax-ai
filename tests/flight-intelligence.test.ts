@@ -23,12 +23,14 @@ test('live store-to-detector pipeline produces bounded wire-valid debug events a
   let now = 0;
   for (let i = 0; i < 6; i++) {
     now = 1000 + i * 1000; store.receive(frame(i, i >= 3), now);
-    intelligence.update(store.snapshot(now));
+    intelligence.update(store.snapshot(now), now);
   }
-  const flight = intelligence.update(store.snapshot(now));
+  const flight = intelligence.update(store.snapshot(now), now);
   assert.equal(flight.status, 'tracking'); assert.equal(flight.phase, 'airborne');
   assert.deepEqual(flight.events.map(item => item.event.type), ['TAKEOFF']);
   assert.equal(flight.events[0]!.forward, true);
+  assert.equal(flight.events[0]!.detectedAt, 6000);
+  assert.equal(intelligence.update(store.snapshot(now + 1000), now + 1000).events[0]!.detectedAt, 6000);
   assert.equal(serverSnapshotSchema.safeParse({ ...store.snapshot(now), flight }).success, true);
   flight.events[0]!.event.type = 'LANDING';
   assert.equal(intelligence.update(store.snapshot(now)).events[0]!.event.type, 'TAKEOFF');

@@ -190,7 +190,7 @@ test('real bridge events reach protected reaction controls and owner-only voice 
   const viewer = ws('/telemetry', { Cookie: cookie, Origin: origin });
   const initial = once(viewer, 'message'); await once(viewer, 'open'); await initial;
   const bridge = ws('/bridge', { Authorization: `Bearer ${bridgeToken}` }); await once(bridge, 'open');
-  const generation = '00000000-0000-4000-8000-000000000001', base = Date.now() - 5000;
+  const generation = '00000000-0000-4000-8000-000000000001', base = Date.now() - 5000 + 1898; // Reproduce the live laptop/server clock difference.
   for (let i = 0; i < 6; i++) {
     const timestamp = base + i * 1000;
     const received = new Promise<void>(resolve => {

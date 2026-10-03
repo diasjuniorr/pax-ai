@@ -38,6 +38,7 @@ export class ReactionCoordinator {
     if (decision.diagnostics) {
       decision.diagnostics.evaluatedAt = this.now();
       decision.diagnostics.eventAgeMs = this.now() - decision.diagnostics.eventTimestamp;
+      decision.diagnostics.detectionAgeMs = decision.diagnostics.detectedAt == null ? null : this.now() - decision.diagnostics.detectedAt;
     }
     this.history.push(this.copy(decision)); this.history = this.history.slice(-100);
     this.log(this.copy(decision));
@@ -67,6 +68,7 @@ export class ReactionCoordinator {
       const perception = perceive(event, session);
       const decision: ReactionDecision = { id, timestamp: now, event: event.type, observation: perception.observation, status: 'suppressed', reason: '', diagnostics: {
         eventTimestamp: event.timestamp, evaluatedAt: now, eventAgeMs: now - event.timestamp,
+        detectedAt: item.detectedAt ?? null, detectionAgeMs: item.detectedAt == null ? null : now - item.detectedAt,
         receiptAgeMs: snapshot.lastReceivedAt === null ? null : now - snapshot.lastReceivedAt,
         gateForward: item.forward, gateReason: item.reason, detectorStatus: snapshot.flight?.status ?? 'unavailable',
         telemetryState: snapshot.telemetryState, simulationActive: snapshot.simulation?.active === true,
@@ -80,17 +82,17 @@ export class ReactionCoordinator {
         this.update(decision, 'suppressed', 'Event aircraft or generation does not match current flight');
       else if (!item.forward)
         this.update(decision, 'suppressed', `Event gate rejected: ${item.reason}`);
-      else if (now - event.timestamp > 15000)
-        this.update(decision, 'suppressed', `Event too old: ${now - event.timestamp} ms (limit: 15000 ms)`);
-      else if (now < event.timestamp)
-        this.update(decision, 'suppressed', `Event timestamp is ${event.timestamp - now} ms ahead of server time`);
+      else if (item.detectedAt == null || item.detectedAt > now)
+        this.update(decision, 'suppressed', 'Missing or invalid backend detection time');
+      else if (now - item.detectedAt >= 15000)
+        this.update(decision, 'suppressed', `Event too old: ${now - item.detectedAt} ms since backend detection (limit: 15000 ms)`);
       else if (now - this.lastDispatch < 30000)
         this.update(decision, 'suppressed', '30-second passenger reaction cooldown');
       else if (!this.enabled) this.update(decision, 'preview', `Silent preview · ${session.passenger.flightDisposition} passenger`);
       else {
         this.discard('Replaced by a newer event');
         this.update(decision, 'queued', `Eligible · ${session.passenger.flightDisposition} passenger`);
-        this.pending = { event, expires: Math.min(now + 15000, event.timestamp + 15000), decision, perception };
+        this.pending = { event, expires: item.detectedAt + 15000, decision, perception };
       }
     }
   }

@@ -8,7 +8,7 @@ export class FlightIntelligence {
   private identity = '';
   private state: FlightDebug = { status: 'disconnected', phase: 'unknown', aircraftId: null, generation: null, events: [] };
   constructor(private readonly log: (component: string, message: string, details?: Record<string, unknown>) => void = () => {}) {}
-  update(snapshot: ServerSnapshot): FlightDebug {
+  update(snapshot: ServerSnapshot, now = Date.now()): FlightDebug {
     const context = snapshot.simulation;
     const identity = JSON.stringify([context?.generation, context?.aircraftId]);
     const disconnected = !snapshot.bridgeConnected || !snapshot.simulatorConnected;
@@ -23,9 +23,9 @@ export class FlightIntelligence {
     if (status !== 'tracking') this.gate.reset();
     for (const event of events) {
       const decision = this.gate.accept(event, snapshot.telemetry!.timestamp);
-      this.state.events.push({ event, ...decision });
+      this.state.events.push({ event, detectedAt: now, ...decision });
       this.state.events = this.state.events.slice(-20);
-      this.log('EVENT', event.type, { eventId: `${event.generation}:${event.timestamp}:${event.type}`, generation: event.generation, timestamp: event.timestamp, ...event.facts });
+      this.log('EVENT', event.type, { eventId: `${event.generation}:${event.timestamp}:${event.type}`, generation: event.generation, timestamp: event.timestamp, detectedAt: now, ...event.facts });
       this.log('GATE', decision.reason, { eventId: `${event.generation}:${event.timestamp}:${event.type}`, event: event.type, forward: decision.forward });
     }
     if (this.state.status !== status || this.state.generation !== (context?.generation ?? null))

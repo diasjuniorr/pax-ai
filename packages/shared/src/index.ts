@@ -33,7 +33,7 @@ export const flightDebugSchema = z.object({
   status: z.enum(['disconnected', 'legacy-agent', 'inactive', 'waiting', 'stale', 'tracking']),
   phase: z.enum(['unknown', 'ground', 'airborne']),
   aircraftId: z.string().nullable(), generation: z.string().nullable(),
-  events: z.array(z.object({ event: flightEventSchema, forward: z.boolean(), reason: z.enum(['accepted', 'stale', 'cooldown']) })).max(20),
+  events: z.array(z.object({ event: flightEventSchema, detectedAt: finite.int().nonnegative().optional(), forward: z.boolean(), reason: z.enum(['accepted', 'stale', 'cooldown']) })).max(20),
 });
 export type FlightDebug = z.infer<typeof flightDebugSchema>;
 
@@ -101,6 +101,7 @@ export const reactionDecisionSchema = z.object({
   status: z.enum(['preview', 'queued', 'deferred', 'dispatched', 'suppressed', 'discarded']),
   diagnostics: z.object({
     eventTimestamp: finite, evaluatedAt: finite, eventAgeMs: finite,
+    detectedAt: finite.nullable().optional(), detectionAgeMs: finite.nullable().optional(),
     receiptAgeMs: finite.nullable(), gateForward: z.boolean(), gateReason: z.string(),
     detectorStatus: z.string(), telemetryState: z.string(), simulationActive: z.boolean(),
     generationMatches: z.boolean(), aircraftMatches: z.boolean(),
@@ -130,7 +131,7 @@ export const debugLogSchema = z.object({ entries: z.array(debugEntrySchema).max(
 const debugFields = new Set(['sessionId', 'connectionId', 'requestId', 'responseId', 'eventId', 'generation',
   'timestamp', 'event', 'type', 'status', 'reason', 'forward', 'durationMs', 'inputTokens', 'outputTokens',
   'sampleTimestamp', 'altitudeAglFeet', 'indicatedAirspeedKnots', 'verticalSpeedFpm', 'phase', 'automatic',
-  'eventTimestamp', 'evaluatedAt', 'eventAgeMs', 'receiptAgeMs', 'gateForward', 'gateReason', 'detectorStatus',
+  'eventTimestamp', 'evaluatedAt', 'eventAgeMs', 'detectedAt', 'detectionAgeMs', 'receiptAgeMs', 'gateForward', 'gateReason', 'detectorStatus',
   'telemetryState', 'simulationActive', 'generationMatches', 'aircraftMatches']);
 export function debugDetails(input: Record<string, unknown> = {}): DebugEntry['details'] {
   const output: DebugEntry['details'] = {};

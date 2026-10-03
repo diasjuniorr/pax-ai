@@ -34,7 +34,7 @@ function render(state: ReturnType<typeof reactionStateSchema.parse>) {
       if (decision.diagnostics) {
         const d = decision.diagnostics;
         const detail = document.createElement('div');
-        detail.textContent = `Event age: ${d.eventAgeMs} ms (server minus event timestamp) · Gate: ${d.gateForward ? 'accepted' : 'rejected'} / ${d.gateReason} · Detector: ${d.detectorStatus} · Receipt age at detection: ${d.receiptAgeMs ?? 'unknown'} ms`;
+        detail.textContent = `Backend detection age: ${d.detectionAgeMs ?? 'unknown'} ms · Source timestamp difference: ${d.eventAgeMs} ms (server minus laptop) · Gate: ${d.gateForward ? 'accepted' : 'rejected'} / ${d.gateReason} · Detector: ${d.detectorStatus} · Receipt age at detection: ${d.receiptAgeMs ?? 'unknown'} ms`;
         item.append(detail);
       }
       return item;
