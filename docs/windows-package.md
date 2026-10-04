@@ -61,3 +61,12 @@ Windows [run 35733774289](https://github.com/diasjuniorr/pax-ai/actions/runs/357
 Complete local package: `dist/personal-runtime/PAX-windows-x64-a44ac964a306.zip` (260,038 bytes), with an adjacent `.zip.sha256` file. SHA-256: `5b3a41a76bb43371503a8bc94d2a879858e9d435587eda9ff499afa874af61d8`. All ten payload files match the new CI manifest by size and hash; the executable and both DLLs have x64 PE headers. Microsoft DLLs/EULA were reused from the prior personal ZIP and checked against the new manifest. This complete ZIP remains local/ignored.
 
 Follow [tonight's test](tonight-test.md) using a fresh extracted folder. Real MSFS callbacks, event thresholds, reconnect/reset behavior and clean-laptop prerequisites remain unverified. Event diagnostics do not yet trigger autonomous passenger speech.
+
+
+## Weather-capable personal build — recorded 2026-10-04
+
+Commit `aa6cd3a3b743d819126545cc98d247fe2abd87b9` passed [Windows CI run 37147237280](https://github.com/diasjuniorr/pax-ai/actions/runs/37147237280): native compilation/runtime and weather normalization checks, 63 backend tests, 6 browser tests, production build and hosted smoke. The managed SDK packet-ID signature was corrected before this successful run.
+
+Complete personal ZIP: `dist/personal-runtime/PAX-windows-x64-aa6cd3a3b743.zip` (262,048 bytes). SHA-256: `d4b965fba192cb552d9208e9ce33db4608cae63337bcab9019a8727553cc3d3c`. Assembly reused only the three Microsoft vendor files from the previous personal ZIP, checking each against the new CI manifest. All ten payload files and the executable/DLL x64 PE headers were verified. No vendor DLLs were published to GitHub.
+
+Stop the old agent, extract the entire new ZIP into a separate folder, run `Check-Runtime.cmd`, then `Start-PAX.cmd`. This update adds optional local weather observations; it does not install an SDK or require another API key. The previous ZIP remains usable with weather marked unknown. Follow the [passenger awareness checklist](passenger-awareness.md) to validate weather accuracy and passenger wording in a live flight; CI does not prove either.

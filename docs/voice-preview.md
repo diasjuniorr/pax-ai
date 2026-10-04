@@ -1,12 +1,12 @@
 # Browser voice preview
 
-This is a laptop-independent test of realtime microphone input and AI-generated passenger speech. It is not the final HOTAS interaction path. The browser tab must remain visible and the hold-to-talk control focused/pressed. The Windows package is unchanged.
+This is a laptop-independent test of realtime microphone input and AI-generated passenger speech. It is not the final HOTAS interaction path. The browser tab must remain visible and the hold-to-talk control focused/pressed. Voice itself does not require an agent update; optional simulator weather does. See [passenger awareness](passenger-awareness.md).
 
 ## Try it on the Mac
 
 1. Deploy the voice-preview commit on the existing Render service after GitHub checks pass.
 2. Ensure `OPENAI_API_KEY` is set in the service's Environment settings. Voice uses that same server-only key as text conversation. Optional `PAX_OPENAI_REALTIME_MODEL` defaults to `gpt-realtime`; it must be a Realtime audio model available to the API project. Save/deploy if settings change.
-3. Open the HTTPS PAX dashboard, sign in and create/start a passenger session. Use headphones to reduce echo.
+3. Open the HTTPS PAX dashboard, sign in and choose a Passenger voice and create/start a passenger session. Use headphones to reduce echo.
 4. In **Voice preview**, click **Connect voice** and allow microphone access. Wait for **Ready — hold the button to speak**.
 5. Hold **Hold to talk**, ask “What is your name and why are you traveling?”, then release. Alternatively, focus that button and hold/release Space or Enter.
 6. The UI should move through listening → thinking → speaking → ready. Hear the reply, compare it with the profile and ask a follow-up.
@@ -32,6 +32,6 @@ VAD is disabled (`turn_detection: null`): buffer clear on press, commit and `res
 
 The client renews a server lease every five seconds. Missing heartbeats expire it after 15 seconds; initial negotiation gets 45 seconds. Connections are capped at 20 minutes in this preview, then require an explicit reconnect. Session end, server shutdown and explicit disconnect request provider hangup. A late negotiation result is disposed if its owner ended. Provider hangup has one bounded retry; abrupt process death cannot guarantee that request completes, so peer shutdown and provider connection handling also matter. This is single-instance, in-memory infrastructure.
 
-Browser tests use explicit fake microphone/WebRTC/provider fixtures to verify controls and cleanup. They do not prove actual media negotiation, intelligible speech, network behavior, model access or billing. Live OpenAI voice acceptance remains pending. The user confirmed Windows/MSFS connectivity and updating telemetry on 2026-09-25/26; detailed event/reset acceptance remains to be recorded.
+Browser tests use explicit fake microphone/WebRTC/provider fixtures to verify controls and cleanup. They do not prove actual media negotiation, intelligible speech, network behavior, model access or billing. On 2026-10-03 the user confirmed audible voice and a correct spontaneous takeoff comment; the exported log correlates the automatic event with completed playback. New voice selections, grounding quality and weather observations still require live acceptance. The user confirmed Windows/MSFS connectivity and updating telemetry on 2026-09-25/26; detailed event/reset acceptance remains to be recorded.
 
 Official references: [WebRTC unified interface](https://developers.openai.com/api/docs/guides/voice-webrtc), [manual turns](https://developers.openai.com/api/docs/guides/realtime-conversations), [call configuration](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/create), [call IDs](https://developers.openai.com/api/docs/guides/voice-server-controls), [hangup](https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/hangup).

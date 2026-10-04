@@ -225,3 +225,8 @@ Primary SDK references: [system event subscriptions](https://docs.flightsimulato
 ## Flight-aware conversation and optional reactions — 2026-09-29
 
 The server now selects bounded fresh observations for each text/voice reply, and a separate deterministic reaction coordinator turns accepted TAKEOFF/LANDING events into optional short passenger comments. Voice remains browser WebRTC; the current agent package is unchanged. Policy, ownership, queue bounds, interruption and acceptance limits are described in [passenger reactions](passenger-reactions.md). This extends the reference-informed perception/salience/lifecycle separation without introducing a separate agent framework or LLM-based classifier.
+
+
+## Qualitative passenger awareness and optional weather — 2026-10-03
+
+`flight-context.ts` is now a data boundary between instrument telemetry and character knowledge: the model gets qualitative motion, local weather observations and explicit unknowns, without numerical flight readings or raw identity/timestamps. Control metadata stays outside the prompt. Both text and each manual/automatic voice turn use this boundary. A separate optional native weather definition supplies precipitation, local cloud, particle visibility and wind; it has independent sample expiry and failure handling. Old agents remain compatible with weather unknown. Voice selection belongs to the validated passenger profile and is set on provider call creation; disposition guides delivery, never observed facts. See [design, SDK sources and live acceptance checklist](passenger-awareness.md).
